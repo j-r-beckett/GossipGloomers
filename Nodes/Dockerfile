@@ -28,6 +28,8 @@ RUN rm maelstrom.tar.bz2
 WORKDIR maelstrom
 #ENTRYPOINT ["dotnet", "Nodes.dll"]
 
+# {"src":"c0","dest":"n0","body":{"type":"init","msg_id":1,"node_id":"n0","node_ids":["n0"]}}
+
 # Echo
 #RUN ./maelstrom test -w echo --bin /app/Nodes --node-count 1 --time-limit 10 --log-stderr
 
