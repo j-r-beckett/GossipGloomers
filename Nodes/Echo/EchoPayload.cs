@@ -1,4 +1,4 @@
-﻿namespace Nodes;
+﻿namespace Nodes.Echo;
 
 public sealed class EchoPayload : Payload
 {

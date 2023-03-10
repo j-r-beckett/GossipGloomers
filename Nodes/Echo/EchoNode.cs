@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Nodes;
+namespace Nodes.Echo;
 
 public class EchoNode
 {

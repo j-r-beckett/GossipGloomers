@@ -4,6 +4,7 @@ using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Nodes;
+using Nodes.Echo;
 
 JsonConvert.DefaultSettings = () => new JsonSerializerSettings
 {
