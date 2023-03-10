@@ -1,0 +1,15 @@
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\bin\Debug\net7.0\Nodes.exe
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\bin\Debug\net7.0\Nodes.deps.json
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\bin\Debug\net7.0\Nodes.runtimeconfig.json
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\bin\Debug\net7.0\Nodes.dll
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\bin\Debug\net7.0\Nodes.pdb
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.csproj.AssemblyReference.cache
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.AssemblyInfoInputs.cache
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.AssemblyInfo.cs
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.csproj.CoreCompileInputs.cache
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.dll
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\refint\Nodes.dll
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.pdb
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.genruntimeconfig.cache
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\ref\Nodes.dll
