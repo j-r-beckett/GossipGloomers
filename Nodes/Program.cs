@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Nodes;
 using Nodes.Broadcast;
+using Nodes.Echo;
 using Nodes.Generate;
 
 JsonConvert.DefaultSettings = () => new JsonSerializerSettings

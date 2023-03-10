@@ -11,14 +11,14 @@ public class BroadcastNode : Node
     {
         Log($"received broadcast message {msg}");
         _messages.Add(msg.Body.Message);
-        Send(new Message<BroadcastOkPayload>(_nodeId, msg.Src, new BroadcastOkPayload(msg.Body.MsgId, msg.Body.MsgId)));
+        Send(new Message<BroadcastOkPayload>(_nodeId, msg.Src, new BroadcastOkPayload(msg.Body.MsgId)));
     }
 
     public void ReceiveMessage(Message<ReadPayload> msg)
     {
         Log($"received read message {msg}");
         Send(new Message<ReadOkPayload>(_nodeId, msg.Src,
-            new ReadOkPayload(msg.Body.MsgId, msg.Body.MsgId, _messages)));
+            new ReadOkPayload(msg.Body.MsgId, _messages)));
     }
 
     public void ReceiveMessage(Message<TopologyPayload> msg)
@@ -29,6 +29,6 @@ public class BroadcastNode : Node
             throw new ArgumentException("Node is not part of topology");
         }
 
-        Send(new Message<TopologyOkPayload>(_nodeId, msg.Src, new TopologyOkPayload(msg.Body.MsgId, msg.Body.MsgId)));
+        Send(new Message<TopologyOkPayload>(_nodeId, msg.Src, new TopologyOkPayload(msg.Body.MsgId)));
     }
 }
