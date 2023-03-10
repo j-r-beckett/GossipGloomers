@@ -31,7 +31,10 @@ WORKDIR maelstrom
 # {"src":"c0","dest":"n0","body":{"type":"init","msg_id":1,"node_id":"n0","node_ids":["n0"]}}
 
 # Echo
-#RUN ./maelstrom test -w echo --bin /app/Nodes --node-count 1 --time-limit 10 --log-stderr
+# ./maelstrom test -w echo --bin /app/Nodes --node-count 1 --time-limit 10 --log-stderr
 
 # Unique id generation
-#RUN ./maelstrom test -w unique-ids --bin /app/Nodes --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition --log-stderr
+# ./maelstrom test -w unique-ids --bin /app/Nodes --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition --log-stderr
+
+# Broadcast
+# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 1 --time-limit 20 --rate 10 --log-stderr

@@ -20,6 +20,7 @@ public class NodeRunner<T> where T : Node
 
     public void ProcessMessage(string msgStr)
     {
+        Console.Error.WriteLine($"processing msg {msgStr}");
         foreach (var type in _registeredTypes)
         {
             try

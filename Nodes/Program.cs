@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Nodes;
+using Nodes.Broadcast;
 using Nodes.Generate;
 
 JsonConvert.DefaultSettings = () => new JsonSerializerSettings
@@ -8,7 +9,7 @@ JsonConvert.DefaultSettings = () => new JsonSerializerSettings
     ContractResolver = new DefaultContractResolver { NamingStrategy = new SnakeCaseNamingStrategy() }
 };
 
-var nodeRunner = new NodeRunner<GenerateNode>(new GenerateNode());
+var nodeRunner = new NodeRunner<BroadcastNode>(new BroadcastNode());
 while (true)
 {
     var line = Console.In.ReadLine();

@@ -6,7 +6,12 @@ public class Node
 {
     protected string? _nodeId;
 
-    protected void Send(dynamic msg) => Console.WriteLine(JsonConvert.SerializeObject(msg));
+    protected void Send(dynamic msg)
+    {
+        var msgJson = JsonConvert.SerializeObject(msg);
+        Log($"sending msg {msgJson}");
+        Console.WriteLine(msgJson);
+    }
 
     protected void Log(string s) => Console.Error.WriteLine(s);
 
