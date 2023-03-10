@@ -10,7 +10,7 @@ JsonConvert.DefaultSettings = () => new JsonSerializerSettings
     ContractResolver = new DefaultContractResolver { NamingStrategy = new SnakeCaseNamingStrategy() }
 };
 
-var nodeRunner = new NodeRunner<BroadcastNode>(new BroadcastNode());
+var nodeRunner = new NodeRunner<SingleBroadcastNode>(new SingleBroadcastNode());
 while (true)
 {
     var line = Console.In.ReadLine();

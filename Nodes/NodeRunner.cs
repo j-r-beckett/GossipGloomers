@@ -6,12 +6,12 @@ namespace Nodes;
 public class NodeRunner<T> where T : Node
 {
     private readonly T _node;
-    private readonly Type[] _registeredTypes;
+    private readonly Type[] _possibleMessageTypes;
 
     public NodeRunner(T node)
     {
         _node = node;
-        _registeredTypes = _node.GetType()
+        _possibleMessageTypes = _node.GetType()
             .GetMethods()
             .Where(m => m.Name == nameof(_node.ReceiveMessage) && m.GetParameters().Length == 1)
             .Select(m => m.GetParameters().First().ParameterType)
@@ -21,7 +21,7 @@ public class NodeRunner<T> where T : Node
     public void ProcessMessage(string msgStr)
     {
         Console.Error.WriteLine($"processing msg {msgStr}");
-        foreach (var type in _registeredTypes)
+        foreach (var type in _possibleMessageTypes)
         {
             try
             {
@@ -30,7 +30,7 @@ public class NodeRunner<T> where T : Node
                     .MakeGenericMethod(type);
                 var msg = deserializeMethod.Invoke(null, new object[] { msgStr });
                 var receiveMethod = _node.GetType().GetMethod(nameof(_node.ReceiveMessage), new[] { type });
-                receiveMethod.Invoke(_node, new [] { msg });
+                _node.HandleMessage(receiveMethod, msg);
             }
             catch (TargetInvocationException ex) when (ex.InnerException is MessageDeserializationTypeMismatchException)
             {
