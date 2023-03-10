@@ -13,3 +13,5 @@ C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\refint\Nodes.
 C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.pdb
 C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.genruntimeconfig.cache
 C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\ref\Nodes.dll
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\bin\Debug\net7.0\Newtonsoft.Json.dll
+C:\Users\jimmy\RiderProjects\GossipGloomers\Nodes\obj\Debug\net7.0\Nodes.csproj.CopyComplete

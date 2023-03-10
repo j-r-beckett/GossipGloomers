@@ -16,23 +16,16 @@ public class EchoNode
         Console.Error.WriteLine(s);
     }
 
-    public void ReceiveMessage(dynamic msg)
+    public void ReceiveMessage(Message<InitPayload> msg)
     {
-        Log($"received msg [{msg}]");
-        if (msg.body.type == "init")
-        {
-            _nodeId = msg.body.node_id;
-            Log("sending init reply");
-            Send(new { src = _nodeId, dest = msg.src, body = new { type = "init_ok", in_reply_to = msg.body.msg_id } });
-        }
-        else if (msg.body.type == "echo")
-        {
-            Log("sending echo");
-            Send(new
-            {
-                src = _nodeId, dest = msg.src,
-                body = new { type = "echo_ok", in_reply_to = msg.body.msg_id, msg.body.echo }
-            });
-        }
+        _nodeId = msg.Body.NodeId;
+        var payload = new InitOkPayload(msg.Body.MsgId);
+        Send(new Message<InitOkPayload>(_nodeId, msg.Src, payload));
+    }
+
+    public void ReceiveMessage(Message<EchoPayload> msg)
+    {
+        var payload = new EchoOkPayload(msg.Body.MsgId, msg.Body.MsgId, msg.Body.Echo);
+        Send(new Message<EchoOkPayload>(_nodeId, msg.Src, payload));
     }
 }
