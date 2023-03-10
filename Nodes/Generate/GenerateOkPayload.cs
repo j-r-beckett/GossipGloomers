@@ -3,7 +3,8 @@ namespace Nodes.Generate;
 public class GenerateOkPayload : Payload
 {
     public override string Type => "generate_ok";
-    public int Id { get; }
+    public string Id { get; }
+    public int InReplyTo { get; }
 
-    public GenerateOkPayload(int id) => Id = id;
+    public GenerateOkPayload(string id, int inReplyTo) => (Id, InReplyTo) = (id, inReplyTo);
 }

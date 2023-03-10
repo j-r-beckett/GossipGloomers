@@ -27,4 +27,9 @@ RUN tar -xf maelstrom.tar.bz2
 RUN rm maelstrom.tar.bz2
 WORKDIR maelstrom
 #ENTRYPOINT ["dotnet", "Nodes.dll"]
-RUN #./maelstrom test -w echo --bin /app/Nodes --time-limit 5 --log-stderr
+
+# Echo
+#RUN ./maelstrom test -w echo --bin /app/Nodes --node-count 1 --time-limit 10 --log-stderr
+
+# Unique id generation
+#RUN ./maelstrom test -w unique-ids --bin /app/Nodes --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition --log-stderr
