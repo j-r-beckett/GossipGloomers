@@ -22,16 +22,34 @@ public abstract class Node
         _context = null;
     }
 
-    public void Reply<T>(T payload) where T: Payload
+    public void Reply(dynamic payload)
     {
-        Send(new Message<T>(_nodeId, _context.Src, payload));
+        Send(new { src = _nodeId, dest = _context.Src, body = payload});
     }
 
     protected void Log(string s) => Console.Error.WriteLine(s);
 
-    public void ReceiveMessage(Message<InitPayload> msg)
+    [MessageType("init")]
+    public void ReceiveInit(dynamic msg)
     {
         _nodeId = msg.Body.NodeId;
-        Reply(new InitOkPayload(msg.Body.MsgId));
+        Reply(new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
+    }
+
+    public void ProcessMessage(string msgStr)
+    {
+        Console.Error.WriteLine($"processing msg {msgStr}");
+        var msg = MessageParser.ParseMessage(msgStr);
+        var msgType = (string)msg.Body.Type;
+        var handlers = GetType()
+            .GetMethods()
+            .Where(m => m.GetCustomAttributes()
+                .Any(attr => (attr as MessageTypeAttribute)?.MessageType.ToString() == msgType));
+        foreach (var handler in handlers)
+        {
+            _context = msg;
+            handler.Invoke(this, new object[] { msg });
+            _context = null;
+        }
     }
 }

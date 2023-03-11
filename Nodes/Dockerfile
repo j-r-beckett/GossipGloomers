@@ -29,6 +29,7 @@ WORKDIR maelstrom
 #ENTRYPOINT ["dotnet", "Nodes.dll"]
 
 # {"src":"c0","dest":"n0","body":{"type":"init","msg_id":1,"node_id":"n0","node_ids":["n0"]}}
+# {"id":2,"src":"c2","dest":"n0","body":{"echo":"Please echo 91","type":"echo","msg_id":1}}
 
 # Echo
 # ./maelstrom test -w echo --bin /app/Nodes --node-count 1 --time-limit 10 --log-stderr
@@ -38,3 +39,4 @@ WORKDIR maelstrom
 
 # Broadcast
 # ./maelstrom test -w broadcast --bin /app/Nodes --node-count 1 --time-limit 20 --rate 10 --log-stderr
+# {"id":2,"src":"c1","dest":"n0","body":{"type":"topology","topology":{"n0":[]},"msg_id":1}}

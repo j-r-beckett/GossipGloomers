@@ -10,13 +10,13 @@ JsonConvert.DefaultSettings = () => new JsonSerializerSettings
     ContractResolver = new DefaultContractResolver { NamingStrategy = new SnakeCaseNamingStrategy() }
 };
 
-var nodeRunner = new NodeRunner<SingleBroadcastNode>(new SingleBroadcastNode());
+var node = new SingletonBroadcastNode();
 while (true)
 {
     var line = Console.In.ReadLine();
     if (line != null)
     {
-        nodeRunner.ProcessMessage(line);
+        node.ProcessMessage(line);
     }
     Thread.Sleep(10);
 }
