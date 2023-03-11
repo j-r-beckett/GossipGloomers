@@ -7,7 +7,7 @@ public abstract class Node
 {
     protected string? _nodeId;
     private dynamic? _context;
-    
+
     protected void Send(dynamic msg)
     {
         var msgJson = JsonConvert.SerializeObject(msg);
@@ -24,7 +24,7 @@ public abstract class Node
 
     public void Reply(dynamic payload)
     {
-        Send(new { src = _nodeId, dest = _context.Src, body = payload});
+        Send(new { Src = _nodeId, Dest = _context.Src, Body = payload });
     }
 
     protected void Log(string s) => Console.Error.WriteLine(s);

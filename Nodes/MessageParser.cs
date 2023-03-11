@@ -1,13 +1,22 @@
 using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace Nodes;
 
 public class MessageParser
 {
+    static MessageParser()
+    {
+        JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+        {
+            ContractResolver = new DefaultContractResolver { NamingStrategy = new SnakeCaseNamingStrategy() }
+        };
+    }
+
     public static dynamic ParseMessage(string msg)
-        => RenameFields((JToken) JsonConvert.DeserializeObject<dynamic>(msg), ToPascalCase);
+        => RenameFields((JToken)JsonConvert.DeserializeObject<dynamic>(msg), ToPascalCase);
 
     private static JToken RenameFields(JToken token, Func<string, string> renamer)
     {
