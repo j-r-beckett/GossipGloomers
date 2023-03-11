@@ -35,3 +35,6 @@ WORKDIR maelstrom
 
 # Single-Node Broadcast
 # ./maelstrom test -w broadcast --bin /app/Nodes --node-count 1 --time-limit 20 --rate 10 --log-stderr
+
+# Multi-Node Broadcast
+# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 5 --time-limit 20 --rate 10 --log-stderr

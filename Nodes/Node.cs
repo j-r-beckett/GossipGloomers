@@ -11,7 +11,7 @@ public abstract class Node
     protected void Send(dynamic msg)
     {
         var msgJson = JsonConvert.SerializeObject(msg);
-        Log($"sending msg {msgJson}");
+        // Log($"sending msg {msgJson}");
         Console.WriteLine(msgJson);
     }
 
@@ -38,7 +38,7 @@ public abstract class Node
 
     public void ProcessMessage(string msgStr)
     {
-        Console.Error.WriteLine($"processing msg {msgStr}");
+        // Console.Error.WriteLine($"processing msg {msgStr}");
         var msg = MessageParser.ParseMessage(msgStr);
         var msgType = (string)msg.Body.Type;
         var handlers = GetType()

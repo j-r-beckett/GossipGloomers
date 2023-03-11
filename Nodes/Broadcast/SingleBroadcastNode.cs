@@ -1,6 +1,6 @@
 namespace Nodes.Broadcast;
 
-public class SingletonBroadcastNode : Node
+public class SingleBroadcastNode : Node
 {
     private readonly List<long> _messages = new();
 

@@ -1,8 +1,6 @@
 using Nodes.Broadcast;
-using Nodes.Echo;
-using Nodes.Generate;
 
-var node = new SingletonBroadcastNode();
+var node = new MultiBroadcastNode();
 
 for (string? line = null;; line = Console.In.ReadLine())
 {
