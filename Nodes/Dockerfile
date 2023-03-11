@@ -4,7 +4,7 @@ RUN apt-get install default-jre -y
 RUN apt-get install graphviz -y
 RUN apt-get install gnuplot -y
 RUN apt-get install wget -y
-RUN apt-get install lbzip2
+RUN apt-get install lbzip2 -y
 RUN apt-get install git -y
 WORKDIR /app
 
@@ -38,3 +38,9 @@ WORKDIR maelstrom
 
 # Multi-Node Broadcast
 # ./maelstrom test -w broadcast --bin /app/Nodes --node-count 5 --time-limit 20 --rate 10 --log-stderr
+
+# Fault Tolerant Broadcast
+# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 5 --time-limit 20 --rate 10 --nemesis partition --log-stderr
+
+# {"id":21,"src":"c11","dest":"n1","body":{"type":"broadcast","message":0,"msg_id":1}}
+# {"id":22,"src":"n1","dest":"n4","body":{"type":"broadcast","message":0,"msg_id":1}}

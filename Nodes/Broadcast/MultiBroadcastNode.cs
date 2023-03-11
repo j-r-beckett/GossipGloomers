@@ -1,32 +1,40 @@
+using System.Runtime.Serialization;
+
 namespace Nodes.Broadcast;
 
 public class MultiBroadcastNode : Node
 {
-    private HashSet<string> _adjacentNodes = new ();
     private readonly HashSet<long> _messages = new();
 
-    private int _currentMessageId;
+    private int _messageId;
 
-    private int NextMessageId() => ++_currentMessageId;
+    private static int Next(ref int messageId) => ++messageId;
+
+    private static bool IsClientBroadcast(dynamic broadcastMsg) => broadcastMsg.Src.ToString().StartsWith("c");
+
 
     [MessageType("broadcast")]
     public void HandleBroadcast(dynamic msg)
     {
-        if (!_messages.Contains((int)msg.Body.Message))
-        {
-            foreach (var adjNode in _adjacentNodes)
-            {
-                Send(new
-                {
-                    Src = _nodeId,
-                    Dest = adjNode,
-                    Body = new { Type = "broadcast", message = msg.Body.Message, MsgId = NextMessageId() }
-                });
-            }
-        }
-
         _messages.Add((int)msg.Body.Message);
-        Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+
+        if (IsClientBroadcast(msg))
+        {
+            foreach (var adjNode in _nodeIds)
+            {
+                if (adjNode != _nodeId)
+                {
+                    Send(new
+                    {
+                        Src = _nodeId,
+                        Dest = adjNode,
+                        Body = new { Type = "broadcast", Message = msg.Body.Message, MsgId = Next(ref _messageId) }
+                    });
+                }
+            }
+
+            Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+        }
     }
 
     [MessageType("broadcast_ok")]
@@ -36,13 +44,13 @@ public class MultiBroadcastNode : Node
 
     [MessageType("read")]
     public void HandleRead(dynamic msg)
-        => Reply(new { Type = "read_ok", Messages = _messages, InReplyTo = msg.Body.MsgId });
+        => Reply(new
+        {
+            Type = "read_ok",
+            Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
+            InReplyTo = msg.Body.MsgId
+        });
 
     [MessageType("topology")]
-    public void HandleTopology(dynamic msg)
-    {
-        Dictionary<string, HashSet<string>> topology = msg.Body.Topology.ToObject<Dictionary<string, HashSet<string>>>();
-        _adjacentNodes = topology[_nodeId.ToUpper()];
-        Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
-    }
+    public void HandleTopology(dynamic msg) => Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
 }
