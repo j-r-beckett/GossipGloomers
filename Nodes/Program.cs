@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Nodes.Broadcast;
 
-var node = new MultiBroadcastNode();
+var node = new FaultTolerantBroadcastNode();
 
 // const int stdinPollMillis = 10;
 // const int backgroundTaskDelayMillis = 100;
