@@ -30,16 +30,12 @@ public abstract class Node
 
     protected void Log(string s) => Console.Error.WriteLine(s);
 
-    [MessageType("init")]
+    [MessageHandler("init")]
     public void ReceiveInit(dynamic msg)
     {
         _nodeId = msg.Body.NodeId;
         _nodeIds = msg.Body.NodeIds.ToObject<string[]>();
         Reply(new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
-    }
-
-    public virtual void PerformBackgroundTasks()
-    {
     }
 
     public void ProcessMessage(string msgStr)
@@ -50,7 +46,7 @@ public abstract class Node
         var handlers = GetType()
             .GetMethods()
             .Where(m => m.GetCustomAttributes()
-                .Any(attr => (attr as MessageTypeAttribute)?.MessageType.ToString() == msgType));
+                .Any(attr => (attr as MessageHandlerAttribute)?.MessageType.ToString() == msgType));
         foreach (var handler in handlers)
         {
             _context = msg;

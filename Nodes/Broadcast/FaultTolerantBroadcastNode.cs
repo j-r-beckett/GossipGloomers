@@ -13,7 +13,8 @@ public class FaultTolerantBroadcastNode : Node
 
     private static bool IsClientBroadcast(dynamic broadcastMsg) => broadcastMsg.Src.ToString().StartsWith("c");
     
-    public override void PerformBackgroundTasks()
+    [BackgroundProcess(50)]
+    public void ResendPendingUpdates()
     {
         foreach (var update in _pendingUpdates.Values)
         {
@@ -22,7 +23,7 @@ public class FaultTolerantBroadcastNode : Node
     }
 
 
-    [MessageType("broadcast")]
+    [MessageHandler("broadcast")]
     public void HandleBroadcast(dynamic msg)
     {
         if (IsClientBroadcast(msg))
@@ -47,10 +48,10 @@ public class FaultTolerantBroadcastNode : Node
         Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
-    [MessageType("broadcast_ok")]
+    [MessageHandler("broadcast_ok")]
     public void HandleBroadcastOk(dynamic msg) => _pendingUpdates.Remove((long)msg.Body.InReplyTo);
 
-    [MessageType("read")]
+    [MessageHandler("read")]
     public void HandleRead(dynamic msg)
         => Reply(new
         {
@@ -59,6 +60,6 @@ public class FaultTolerantBroadcastNode : Node
             InReplyTo = msg.Body.MsgId
         });
 
-    [MessageType("topology")]
+    [MessageHandler("topology")]
     public void HandleTopology(dynamic msg) => Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
 }

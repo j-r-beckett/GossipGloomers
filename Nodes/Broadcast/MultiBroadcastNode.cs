@@ -13,7 +13,7 @@ public class MultiBroadcastNode : Node
     private static bool IsClientBroadcast(dynamic broadcastMsg) => broadcastMsg.Src.ToString().StartsWith("c");
 
 
-    [MessageType("broadcast")]
+    [MessageHandler("broadcast")]
     public void HandleBroadcast(dynamic msg)
     {
         _messages.Add((int)msg.Body.Message);
@@ -37,12 +37,12 @@ public class MultiBroadcastNode : Node
         }
     }
 
-    [MessageType("broadcast_ok")]
+    [MessageHandler("broadcast_ok")]
     public void HandleBroadcastOk(dynamic msg)
     {
     }
 
-    [MessageType("read")]
+    [MessageHandler("read")]
     public void HandleRead(dynamic msg)
         => Reply(new
         {
@@ -51,6 +51,6 @@ public class MultiBroadcastNode : Node
             InReplyTo = msg.Body.MsgId
         });
 
-    [MessageType("topology")]
+    [MessageHandler("topology")]
     public void HandleTopology(dynamic msg) => Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
 }

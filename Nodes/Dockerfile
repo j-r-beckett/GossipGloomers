@@ -28,19 +28,19 @@ RUN rm maelstrom.tar.bz2
 WORKDIR maelstrom
 
 # Echo
-# ./maelstrom test -w echo --bin /app/Nodes --node-count 1 --time-limit 10 --log-stderr
+# ./maelstrom test -w echo --bin /app/Nodes --node-count 1 --time-limit 10 
 
 # Unique id generation
-# ./maelstrom test -w unique-ids --bin /app/Nodes --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition --log-stderr
+# ./maelstrom test -w unique-ids --bin /app/Nodes --time-limit 30 --rate 1000 --node-count 3 --availability total --nemesis partition 
 
 # Single-Node Broadcast
-# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 1 --time-limit 20 --rate 10 --log-stderr
+# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 1 --time-limit 20 --rate 10 
 
 # Multi-Node Broadcast
-# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 5 --time-limit 20 --rate 10 --log-stderr
+# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 5 --time-limit 20 --rate 10
 
 # Fault Tolerant Broadcast
-# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 5 --time-limit 20 --rate 10 --nemesis partition --log-stderr
+# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 5 --time-limit 20 --rate 10 --nemesis partition
 
-# {"id":21,"src":"c11","dest":"n1","body":{"type":"broadcast","message":0,"msg_id":1}}
-# {"id":22,"src":"n1","dest":"n4","body":{"type":"broadcast","message":0,"msg_id":1}}
+# Efficient Broadcast 1
+# ./maelstrom test -w broadcast --bin /app/Nodes --node-count 25 --time-limit 20 --rate 100 --latency 100
