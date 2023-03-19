@@ -13,8 +13,13 @@ public class SingleBroadcastNode : Node
 
     [MessageHandler("read")]
     public void HandleRead(dynamic msg)
-        => Reply(new { Type = "read_ok", Messages = _messages, InReplyTo = msg.Body.MsgId });
+    {
+        Reply(new { Type = "read_ok", Messages = _messages, InReplyTo = msg.Body.MsgId });
+    }
 
     [MessageHandler("topology")]
-    public void HandleTopology(dynamic msg) => Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+    public void HandleTopology(dynamic msg)
+    {
+        Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+    }
 }

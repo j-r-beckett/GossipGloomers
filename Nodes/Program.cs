@@ -1,4 +1,6 @@
 using Nodes;
-using Nodes.Broadcast;
+using Nodes.Kafka;
 
-await NodeRunner.Run(new FaultTolerantBroadcastNode());
+var node = new SingleKafkaNode();
+
+await NodeRunner.Run(node);

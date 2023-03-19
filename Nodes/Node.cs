@@ -1,42 +1,12 @@
 using System.Reflection;
-using Newtonsoft.Json;
 
 namespace Nodes;
 
 public abstract class Node
 {
+    private dynamic? _context;
     protected string? _nodeId;
     protected string[] _nodeIds;
-    private dynamic? _context;
-
-    protected void Send(dynamic msg)
-    {
-        var msgJson = JsonConvert.SerializeObject(msg);
-        Log($"sending msg {msgJson}");
-        Console.WriteLine(msgJson);
-    }
-
-    public void HandleMessage(MethodInfo handler, dynamic msg)
-    {
-        _context = msg;
-        handler.Invoke(this, new[] { msg });
-        _context = null;
-    }
-
-    public void Reply(dynamic payload)
-    {
-        Send(new { Src = _nodeId, Dest = _context.Src, Body = payload });
-    }
-
-    protected void Log(string s) => Console.Error.WriteLine(s);
-
-    [MessageHandler("init")]
-    public void ReceiveInit(dynamic msg)
-    {
-        _nodeId = msg.Body.NodeId;
-        _nodeIds = msg.Body.NodeIds.ToObject<string[]>();
-        Reply(new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
-    }
 
     public void ProcessMessage(string msgStr)
     {
@@ -53,5 +23,18 @@ public abstract class Node
             handler.Invoke(this, new object[] { msg });
             _context = null;
         }
+    }
+
+    [MessageHandler("init")]
+    public void HandleInit(dynamic msg)
+    {
+        _nodeId = msg.Body.NodeId;
+        _nodeIds = msg.Body.NodeIds.ToObject<string[]>();
+        Reply(new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
+    }
+
+    protected void Reply(dynamic payload)
+    {
+        MaelstromUtils.Send(new { Src = _nodeId, Dest = _context.Src, Body = payload });
     }
 }

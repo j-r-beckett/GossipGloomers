@@ -1,9 +1,12 @@
 namespace Nodes;
 
-[AttributeUsage(System.AttributeTargets.Method)]  
+[AttributeUsage(AttributeTargets.Method)]
 public class MessageHandlerAttribute : Attribute
 {
-    public string MessageType { get; }
+    public MessageHandlerAttribute(string messageType)
+    {
+        MessageType = messageType;
+    }
 
-    public MessageHandlerAttribute(string messageType) => MessageType = messageType;
-}  
+    public string MessageType { get; }
+}

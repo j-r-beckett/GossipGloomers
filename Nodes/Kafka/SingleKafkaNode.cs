@@ -2,8 +2,8 @@ namespace Nodes.Kafka;
 
 public class SingleKafkaNode : Node
 {
-    private readonly Dictionary<string, List<int>> _logs = new();
     private readonly Dictionary<string, int> _commits = new();
+    private readonly Dictionary<string, List<int>> _logs = new();
 
     [MessageHandler("send")]
     public void HandleSend(dynamic msg)
@@ -11,7 +11,7 @@ public class SingleKafkaNode : Node
         var key = (string)msg.Body.Key;
         if (!_logs.TryGetValue(key, out var log))
         {
-            log = new();
+            log = new List<int>();
             _logs.Add(key, log);
         }
 
@@ -27,18 +27,13 @@ public class SingleKafkaNode : Node
         var results = new Dictionary<string, List<int[]>>();
 
         foreach (var (key, offset) in offsets)
-        {
             if (_logs.TryGetValue(key.ToLower(), out var log))
             {
                 var messages = new List<int[]>();
-                for (var i = offset; i < log.Count; i++)
-                {
-                    messages.Add(new[] { i, log[i] });
-                }
+                for (var i = offset; i < log.Count; i++) messages.Add(new[] { i, log[i] });
 
                 results.Add(key.ToLower(), messages);
             }
-        }
 
         Reply(new { Type = "poll_ok", Msgs = results, InReplyTo = msg.Body.MsgId });
     }
@@ -48,10 +43,7 @@ public class SingleKafkaNode : Node
     {
         Dictionary<string, int> offsets = msg.Body.Offsets.ToObject<Dictionary<string, int>>();
 
-        foreach (var (key, offset) in offsets)
-        {
-            _commits[key.ToLower()] = offset;
-        }
+        foreach (var (key, offset) in offsets) _commits[key.ToLower()] = offset;
 
         Reply(new { Type = "commit_offsets_ok", InReplyTo = msg.Body.MsgId });
     }
@@ -62,7 +54,7 @@ public class SingleKafkaNode : Node
         string[] keys = msg.Body.Keys.ToObject<string[]>();
 
         var offsets = keys.Where(k => _commits.ContainsKey(k)).ToDictionary(k => k, k => _commits[k]);
-        
+
         Reply(new { Type = "list_committed_offsets_ok", Offsets = offsets, InReplyTo = msg.Body.MsgId });
     }
 }

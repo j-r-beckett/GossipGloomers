@@ -16,7 +16,9 @@ public class MessageParser
     }
 
     public static dynamic ParseMessage(string msg)
-        => RenameFields((JToken)JsonConvert.DeserializeObject<dynamic>(msg), ToPascalCase);
+    {
+        return RenameFields((JToken)JsonConvert.DeserializeObject<dynamic>(msg), ToPascalCase);
+    }
 
     private static JToken RenameFields(JToken token, Func<string, string> renamer)
     {
@@ -24,10 +26,7 @@ public class MessageParser
         if (jObject != null)
         {
             var newObj = new JObject();
-            foreach (var (field, value) in jObject)
-            {
-                newObj[renamer(field)] = RenameFields(value, renamer);
-            }
+            foreach (var (field, value) in jObject) newObj[renamer(field)] = RenameFields(value, renamer);
 
             return newObj;
         }
@@ -36,19 +35,13 @@ public class MessageParser
         if (jArray != null)
         {
             var newArr = new JArray();
-            foreach (var value in jArray)
-            {
-                newArr.Add(RenameFields(value, renamer));
-            }
+            foreach (var value in jArray) newArr.Add(RenameFields(value, renamer));
 
             return newArr;
         }
 
         var jValue = token as JValue;
-        if (jValue != null)
-        {
-            return new JValue(jValue);
-        }
+        if (jValue != null) return new JValue(jValue);
 
         throw new Exception("this should not happen! good luck :)");
     }

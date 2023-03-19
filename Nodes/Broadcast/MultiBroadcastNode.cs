@@ -1,5 +1,3 @@
-using System.Runtime.Serialization;
-
 namespace Nodes.Broadcast;
 
 public class MultiBroadcastNode : Node
@@ -8,9 +6,15 @@ public class MultiBroadcastNode : Node
 
     private int _messageId;
 
-    private static int Next(ref int messageId) => ++messageId;
+    private static int Next(ref int messageId)
+    {
+        return ++messageId;
+    }
 
-    private static bool IsClientBroadcast(dynamic broadcastMsg) => broadcastMsg.Src.ToString().StartsWith("c");
+    private static bool IsClientBroadcast(dynamic broadcastMsg)
+    {
+        return broadcastMsg.Src.ToString().StartsWith("c");
+    }
 
 
     [MessageHandler("broadcast")]
@@ -21,17 +25,13 @@ public class MultiBroadcastNode : Node
         if (IsClientBroadcast(msg))
         {
             foreach (var adjNode in _nodeIds)
-            {
                 if (adjNode != _nodeId)
-                {
-                    Send(new
+                    MaelstromUtils.Send(new
                     {
                         Src = _nodeId,
                         Dest = adjNode,
-                        Body = new { Type = "broadcast", Message = msg.Body.Message, MsgId = Next(ref _messageId) }
+                        Body = new { Type = "broadcast", msg.Body.Message, MsgId = Next(ref _messageId) }
                     });
-                }
-            }
 
             Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
         }
@@ -44,13 +44,18 @@ public class MultiBroadcastNode : Node
 
     [MessageHandler("read")]
     public void HandleRead(dynamic msg)
-        => Reply(new
+    {
+        Reply(new
         {
             Type = "read_ok",
             Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
             InReplyTo = msg.Body.MsgId
         });
+    }
 
     [MessageHandler("topology")]
-    public void HandleTopology(dynamic msg) => Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+    public void HandleTopology(dynamic msg)
+    {
+        Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+    }
 }

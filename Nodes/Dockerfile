@@ -22,7 +22,7 @@ RUN dotnet publish "Nodes.csproj" -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-RUN wget https://github.com/jepsen-io/maelstrom/releases/download/v0.2.3/maelstrom.tar.bz2
+RUN wget github.com/jepsen-io/maelstrom/releases/download/v0.2.3/maelstrom.tar.bz2
 RUN tar -xf maelstrom.tar.bz2
 RUN rm maelstrom.tar.bz2
 WORKDIR maelstrom
@@ -44,3 +44,9 @@ WORKDIR maelstrom
 
 # Efficient Broadcast 1
 # ./maelstrom test -w broadcast --bin /app/Nodes --node-count 25 --time-limit 20 --rate 100 --latency 100
+
+# Grow only counter
+# ./maelstrom test -w g-counter --bin /app/Nodes --node-count 3 --rate 100 --time-limit 20 --nemesis partition
+
+# Single-node Kafka
+# ./maelstrom test -w kafka --bin /app/Nodes --node-count 1 --concurrency 2n --time-limit 20 --rate 1000

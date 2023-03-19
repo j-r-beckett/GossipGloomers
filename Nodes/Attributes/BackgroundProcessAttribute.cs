@@ -1,9 +1,12 @@
 namespace Nodes;
 
-[AttributeUsage(System.AttributeTargets.Method)]  
+[AttributeUsage(AttributeTargets.Method)]
 public class BackgroundProcessAttribute : Attribute
 {
-    public long IntervalMillis { get; }
+    public BackgroundProcessAttribute(long intervalMillis)
+    {
+        IntervalMillis = intervalMillis;
+    }
 
-    public BackgroundProcessAttribute(long intervalMillis) => IntervalMillis = intervalMillis;
+    public long IntervalMillis { get; }
 }
