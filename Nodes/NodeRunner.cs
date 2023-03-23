@@ -4,51 +4,14 @@ namespace Nodes;
 
 public static class NodeRunner
 {
-    private static Random _random = new();
-    private static object nodeLock = new();
-
     private static async Task Schedule(long intervalMillis, Action action)
     {
-        Console.Error.WriteLine("invoking Schedule");
         var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(intervalMillis));
-        var lastRanTimestamp = DateTime.Now - TimeSpan.FromMilliseconds(50);
-        while (await timer.WaitForNextTickAsync())
-        {
-            // lock (nodeLock)
-            // {
-            Console.Error.WriteLine(
-                $"elapsed millis since last invoked: {(DateTime.Now - lastRanTimestamp).TotalMilliseconds}");
-            lastRanTimestamp = DateTime.Now;
-            action();
-            Console.Error.WriteLine("action complete");
-            // }
-        }
-
-        Console.Error.WriteLine("exiting");
+        while (await timer.WaitForNextTickAsync()) action();
     }
 
     public static async Task Run(Node node, long stdinPollIntervalMillis = 20)
     {
-        // var consumeMessageTask = Schedule(stdinPollIntervalMillis, () =>
-        // {
-        //     var line = Console.In.ReadLine();
-        //     if (line != null)
-        //     {
-        //         node.ProcessMessage(line);
-        //     }
-        // });
-        //
-        // var backgroundTasks = node.GetType()
-        //     .GetMethods()
-        //     .Select(m => (method: m, attr: m.GetCustomAttribute<BackgroundProcessAttribute>()))
-        //     .Where(t => t.attr != null)
-        //     .Select(t => Schedule(t.attr.IntervalMillis, () =>
-        //     {
-        //         Console.Error.WriteLine($"invoking action on method {t.method}");
-        //         // t.method.Invoke(node, Array.Empty<object>());
-        //     }))
-        //     .ToList();
-
         var backgroundTasks = node.GetType()
             .GetMethods()
             .Select(m => (method: m, attr: m.GetCustomAttribute<BackgroundProcessAttribute>()))
@@ -57,9 +20,6 @@ public static class NodeRunner
 
         var lastInvoked = new Dictionary<MethodInfo, DateTime>();
 
-        // backgroundTasks.Add(consumeMessageTask);
-        //
-        // await Task.WhenAll(backgroundTasks);
         while (true)
         {
             var line = Console.In.ReadLine();
