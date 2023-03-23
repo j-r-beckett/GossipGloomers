@@ -8,7 +8,40 @@ public abstract class Node
     protected string? _nodeId;
     protected string[] _nodeIds;
 
-    public void ProcessMessage(string msgStr)
+    public async Task Run(long stdinPollIntervalMillis = 20)
+    {
+        var backgroundTasks = GetType()
+            .GetMethods()
+            .Select(m => (method: m, attr: m.GetCustomAttribute<BackgroundProcessAttribute>()))
+            .Where(t => t.attr != null)
+            .ToDictionary(t => t.method, t => TimeSpan.FromMilliseconds(t.attr.IntervalMillis));
+
+        var lastInvoked = new Dictionary<MethodInfo, DateTime>();
+
+        while (true)
+        {
+            var line = Console.In.ReadLine();
+            if (line != null) ProcessMessage(line);
+
+            foreach (var (method, delay) in backgroundTasks)
+            {
+                var lastInvokedAt = lastInvoked.GetValueOrDefault(method, DateTime.MinValue);
+                if (lastInvokedAt + delay < DateTime.Now)
+                {
+                    method.Invoke(this, Array.Empty<object>());
+                    lastInvoked[method] = DateTime.Now;
+                }
+            }
+        }
+    }
+
+    private static async Task Schedule(long intervalMillis, Action action)
+    {
+        var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(intervalMillis));
+        while (await timer.WaitForNextTickAsync()) action();
+    }
+
+    private void ProcessMessage(string msgStr)
     {
         Console.Error.WriteLine($"processing msg {msgStr}");
         var msg = MessageParser.ParseMessage(msgStr);
