@@ -1,3 +1,6 @@
+using Nodes;
 using Nodes.Kafka;
 
-await new SingleKafkaNode().Run();
+var node = new SingleKafkaNode();
+
+await NodeRunner.Run(node);
