@@ -1,6 +1,7 @@
 namespace Nodes.Broadcast.Gen3;
 
-public class EfficientBroadcastNode : Node
+// TODO: this doesn't work yet
+public class EfficientBroadcastNode2 : Node
 {
     private readonly HashSet<long> _messages = new();
 

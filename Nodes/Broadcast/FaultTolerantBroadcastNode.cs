@@ -30,8 +30,8 @@ public class FaultTolerantBroadcastNode : Node
                         Dest = adjNode,
                         Body = new { Type = "broadcast", msg.Body.Message, MsgId = Next(ref _messageId) }
                     };
-                    _pendingUpdates.Add(_messageId, update);
-                    Send(update);
+                    // _pendingUpdates.Add(_messageId, update);
+                    Send(update).Retry(1500);
                 }
 
         _messages.Add((long)msg.Body.Message);
@@ -42,6 +42,7 @@ public class FaultTolerantBroadcastNode : Node
     public void HandleBroadcastOk(dynamic msg)
     {
         _pendingUpdates.Remove((long)msg.Body.InReplyTo);
+        PendingReplyIds.Remove((long)msg.Body.InReplyTo);
     }
 
     [MessageHandler("read")]

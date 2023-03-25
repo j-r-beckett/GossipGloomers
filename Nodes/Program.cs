@@ -4,4 +4,4 @@ using Nodes.Broadcast.Gen3;
 using Nodes.GCounter;
 using Nodes.Kafka;
 
-await new NodeRunner(new MultiBroadcastNode()).Run();
+await new FaultTolerantBroadcastNode().Run();
