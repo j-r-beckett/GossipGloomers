@@ -7,7 +7,7 @@ public static class MaelstromUtils
     public static void Send(dynamic msg)
     {
         var msgJson = JsonConvert.SerializeObject(msg);
-        Log($"sending msg {msgJson}");
+        // Log($"sending msg {msgJson}");
         Console.WriteLine(msgJson);
     }
 

@@ -1,8 +1,12 @@
+using System.Diagnostics;
+
 namespace Nodes.Broadcast;
 
 public class MultiBroadcastNode : Node
 {
     private readonly HashSet<long> _messages = new();
+    private readonly Dictionary<long, Stopwatch> _broadcastTripTimes = new();
+    private List<long> _pings = new();
 
     private int _messageId;
 
@@ -24,22 +28,22 @@ public class MultiBroadcastNode : Node
 
         if (IsClientBroadcast(msg))
         {
-            foreach (var adjNode in _nodeIds)
-                if (adjNode != _nodeId)
+            foreach (var adjNode in NodeIds)
+            {
+                if (adjNode != NodeId)
+                {
                     MaelstromUtils.Send(new
                     {
-                        Src = _nodeId,
+                        Src = NodeId,
                         Dest = adjNode,
                         Body = new { Type = "broadcast", msg.Body.Message, MsgId = Next(ref _messageId) }
                     });
-
-            Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+                    _broadcastTripTimes[_messageId] = Stopwatch.StartNew();
+                }
+            }
         }
-    }
-
-    [MessageHandler("broadcast_ok")]
-    public void HandleBroadcastOk(dynamic msg)
-    {
+        
+        Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
@@ -51,6 +55,18 @@ public class MultiBroadcastNode : Node
             Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
             InReplyTo = msg.Body.MsgId
         });
+    }
+
+    [MessageHandler("broadcast_ok")]
+    public void HandleBroadcastOk(dynamic msg)
+    {
+        if (NodeId == "n0")
+        {
+            var stopwatch = _broadcastTripTimes[(long)msg.Body.InReplyTo];
+            var pingMillis = stopwatch.ElapsedMilliseconds;
+            _pings.Add(pingMillis);
+            Console.Error.WriteLine(string.Join(", ", _pings));
+        }
     }
 
     [MessageHandler("topology")]

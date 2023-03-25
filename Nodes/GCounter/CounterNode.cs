@@ -30,13 +30,13 @@ public class CounterNode : Node
     [BackgroundProcess(50)]
     public void InitiateExternalCounterUpdate()
     {
-        foreach (var node in _nodeIds)
-            if (node != _nodeId)
+        foreach (var node in NodeIds)
+            if (node != NodeId)
             {
                 _pendingExternalCounterUpdates.Add(Next(ref _messageId), node);
                 MaelstromUtils.Send(new
                 {
-                    Src = _nodeId, Dest = "seq-kv", Body = new { Type = "read", Key = node, MsgId = _messageId }
+                    Src = NodeId, Dest = "seq-kv", Body = new { Type = "read", Key = node, MsgId = _messageId }
                 });
             }
     }
@@ -57,9 +57,9 @@ public class CounterNode : Node
     {
         MaelstromUtils.Send(new
         {
-            Src = _nodeId,
+            Src = NodeId,
             Dest = "seq-kv",
-            Body = new { Type = "write", Key = _nodeId, Value = _internalCounter, MsgId = Next(ref _messageId) }
+            Body = new { Type = "write", Key = NodeId, Value = _internalCounter, MsgId = Next(ref _messageId) }
         });
     }
 }

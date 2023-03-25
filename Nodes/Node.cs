@@ -5,12 +5,12 @@ namespace Nodes;
 public abstract class Node
 {
     private dynamic? _context;
-    protected string? _nodeId;
-    protected string[] _nodeIds;
+    public string? NodeId;
+    public string[] NodeIds;
 
     public void ProcessMessage(string msgStr)
     {
-        Console.Error.WriteLine($"processing msg {msgStr}");
+        // Console.Error.WriteLine($"processing msg {msgStr}");
         var msg = MessageParser.ParseMessage(msgStr);
         var msgType = (string)msg.Body.Type;
         var handlers = GetType()
@@ -28,13 +28,13 @@ public abstract class Node
     [MessageHandler("init")]
     public void HandleInit(dynamic msg)
     {
-        _nodeId = msg.Body.NodeId;
-        _nodeIds = msg.Body.NodeIds.ToObject<string[]>();
+        NodeId = msg.Body.NodeId;
+        NodeIds = msg.Body.NodeIds.ToObject<string[]>();
         Reply(new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
     }
 
     protected void Reply(dynamic payload)
     {
-        MaelstromUtils.Send(new { Src = _nodeId, Dest = _context.Src, Body = payload });
+        MaelstromUtils.Send(new { Src = NodeId, Dest = _context.Src, Body = payload });
     }
 }

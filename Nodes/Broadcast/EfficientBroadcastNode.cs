@@ -1,6 +1,6 @@
 namespace Nodes.Broadcast.Gen3;
 
-public class BounceNode : Node
+public class EfficientBroadcastNode : Node
 {
     private readonly HashSet<long> _messages = new();
 
@@ -30,7 +30,7 @@ public class BounceNode : Node
             {
                 MaelstromUtils.Send(new
                 {
-                    Src = _nodeId,
+                    Src = NodeId,
                     Dest = node,
                     Body = new { Type = "update", Update = update, MsgId = Next(ref _messageId) }
                 });
@@ -47,11 +47,11 @@ public class BounceNode : Node
 
         if (IsClientBroadcast(msg))
         {
-            foreach (var nodeId in _nodeIds)
-                if (nodeId != _nodeId)
+            foreach (var nodeId in NodeIds)
+                if (nodeId != NodeId)
                     MaelstromUtils.Send(new
                     {
-                        Src = _nodeId,
+                        Src = NodeId,
                         Dest = nodeId,
                         Body = new { Type = "broadcast", Message = message, MsgId = Next(ref _messageId) }
                     });
@@ -105,7 +105,7 @@ public class BounceNode : Node
     public void HandleTopology(dynamic msg)
     {
         var topology = msg.Body.Topology.ToObject<Dictionary<string, string[]>>();
-        _neighbors = topology[_nodeId.ToUpper()];
+        _neighbors = topology[NodeId.ToUpper()];
 
         foreach (var neighbor in _neighbors) _unackedUpdates.Add(neighbor, new HashSet<long>());
 

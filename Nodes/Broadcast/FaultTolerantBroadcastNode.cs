@@ -28,12 +28,12 @@ public class FaultTolerantBroadcastNode : Node
     public void HandleBroadcast(dynamic msg)
     {
         if (IsClientBroadcast(msg))
-            foreach (var adjNode in _nodeIds)
-                if (adjNode != _nodeId)
+            foreach (var adjNode in NodeIds)
+                if (adjNode != NodeId)
                 {
                     var update = new
                     {
-                        Src = _nodeId,
+                        Src = NodeId,
                         Dest = adjNode,
                         Body = new { Type = "broadcast", msg.Body.Message, MsgId = Next(ref _messageId) }
                     };
