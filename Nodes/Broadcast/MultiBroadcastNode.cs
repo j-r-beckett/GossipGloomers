@@ -32,7 +32,7 @@ public class MultiBroadcastNode : Node
             {
                 if (adjNode != NodeId)
                 {
-                    MaelstromUtils.Send(new
+                    Send(new
                     {
                         Src = NodeId,
                         Dest = adjNode,

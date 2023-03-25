@@ -17,13 +17,6 @@ public class FaultTolerantBroadcastNode : Node
         return broadcastMsg.Src.ToString().StartsWith("c");
     }
 
-    [BackgroundProcess(50)]
-    public void ResendPendingUpdates()
-    {
-        foreach (var update in _pendingUpdates.Values) MaelstromUtils.Send(update);
-    }
-
-
     [MessageHandler("broadcast")]
     public void HandleBroadcast(dynamic msg)
     {
@@ -38,7 +31,7 @@ public class FaultTolerantBroadcastNode : Node
                         Body = new { Type = "broadcast", msg.Body.Message, MsgId = Next(ref _messageId) }
                     };
                     _pendingUpdates.Add(_messageId, update);
-                    MaelstromUtils.Send(update);
+                    Send(update);
                 }
 
         _messages.Add((long)msg.Body.Message);

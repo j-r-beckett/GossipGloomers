@@ -1,4 +1,5 @@
 using System.Reflection;
+using Newtonsoft.Json;
 
 namespace Nodes;
 
@@ -35,6 +36,13 @@ public abstract class Node
 
     protected void Reply(dynamic payload)
     {
-        MaelstromUtils.Send(new { Src = NodeId, Dest = _context.Src, Body = payload });
+        Send(new { Src = NodeId, Dest = _context.Src, Body = payload });
+    }
+    
+    public static void Send(dynamic msg)
+    {
+        var msgJson = JsonConvert.SerializeObject(msg);
+        // Log($"sending msg {msgJson}");
+        Console.WriteLine(msgJson);
     }
 }

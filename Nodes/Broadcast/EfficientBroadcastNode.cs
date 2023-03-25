@@ -28,7 +28,7 @@ public class EfficientBroadcastNode : Node
         foreach (var (node, update) in _unackedUpdates)
             if (update.Any())
             {
-                MaelstromUtils.Send(new
+                Send(new
                 {
                     Src = NodeId,
                     Dest = node,
@@ -49,7 +49,7 @@ public class EfficientBroadcastNode : Node
         {
             foreach (var nodeId in NodeIds)
                 if (nodeId != NodeId)
-                    MaelstromUtils.Send(new
+                    Send(new
                     {
                         Src = NodeId,
                         Dest = nodeId,

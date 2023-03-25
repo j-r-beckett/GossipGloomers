@@ -34,7 +34,7 @@ public class CounterNode : Node
             if (node != NodeId)
             {
                 _pendingExternalCounterUpdates.Add(Next(ref _messageId), node);
-                MaelstromUtils.Send(new
+                Send(new
                 {
                     Src = NodeId, Dest = "seq-kv", Body = new { Type = "read", Key = node, MsgId = _messageId }
                 });
@@ -55,7 +55,7 @@ public class CounterNode : Node
     [BackgroundProcess(100)]
     public void PropagateInternalCounter()
     {
-        MaelstromUtils.Send(new
+        Send(new
         {
             Src = NodeId,
             Dest = "seq-kv",
