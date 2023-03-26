@@ -1,65 +1,24 @@
-namespace Nodes.Broadcast.Gen3;
+namespace Nodes.Broadcast;
 
-// TODO: this doesn't work yet
 public class EfficientBroadcastNode2 : Node
 {
     private readonly HashSet<long> _messages = new();
+    private Dictionary<string, HashSet<long>> _unsentUpdates = new();
+    private Dictionary<long, HashSet<long>> _sentUpdates = new();
 
-    private int _messageId;
-    private string[] _neighbors = { };
+    private int _messageId = -1;
 
-    private readonly Dictionary<long, HashSet<long>> _sentUpdates = new();
-
-    // private Dictionary<long, (dynamic, DateTime)> _pendingUpdates = new();
-    private readonly Dictionary<string, HashSet<long>> _unackedUpdates = new();
-
-    private static int Next(ref int messageId)
+    [BackgroundProcess(1250)]
+    public void SendUpdates()
     {
-        return ++messageId;
-    }
-
-    private static bool IsClientBroadcast(dynamic broadcastMsg)
-    {
-        return broadcastMsg.Src.ToString().StartsWith("c");
-    }
-
-    [BackgroundProcess(200)]
-    public void SendUnackedUpdates()
-    {
-        foreach (var (node, update) in _unackedUpdates)
-            if (update.Any())
-            {
-                Send(new
-                {
-                    Src = NodeId,
-                    Dest = node,
-                    Body = new { Type = "update", Update = update, MsgId = Next(ref _messageId) }
-                });
-                _sentUpdates.Add(_messageId, update);
-            }
-    }
-
-
-    [MessageHandler("broadcast")]
-    public void HandleBroadcast(dynamic msg)
-    {
-        var message = (long)msg.Body.Message;
-        _messages.Add(message);
-
-        if (IsClientBroadcast(msg))
+        foreach (var nodeId in NodeIds)
         {
-            foreach (var nodeId in NodeIds)
-                if (nodeId != NodeId)
-                    Send(new
-                    {
-                        Src = NodeId,
-                        Dest = nodeId,
-                        Body = new { Type = "broadcast", Message = message, MsgId = Next(ref _messageId) }
-                    });
-
-            foreach (var neighbor in _neighbors) _unackedUpdates[neighbor].Add(message);
-
-            Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+            var update = _unsentUpdates[nodeId];
+            Send(new
+            {
+                Src = NodeId, Dest = nodeId, Body = new { Type = "update", Update = update, MsgId = ++_messageId }
+            });
+            _sentUpdates.Add(_messageId, new HashSet<long>(update));
         }
     }
 
@@ -67,28 +26,31 @@ public class EfficientBroadcastNode2 : Node
     public void HandleUpdate(dynamic msg)
     {
         HashSet<long> update = msg.Body.Update.ToObject<HashSet<long>>();
-        var newMessages = update.Where(m => !_messages.Contains(m));
-        foreach (var message in newMessages)
+        foreach (var message in update)
         {
             _messages.Add(message);
-            foreach (var neighbor in _neighbors) _unackedUpdates[neighbor].Add(message);
         }
-
-        if (newMessages.Any()) SendUnackedUpdates();
 
         Reply(new { Type = "update_ok", InReplyTo = msg.Body.MsgId });
     }
-
+    
     [MessageHandler("update_ok")]
     public void HandleUpdateOk(dynamic msg)
     {
-        var inReplyTo = (long)msg.Body.InReplyTo;
-        if (_sentUpdates.ContainsKey(inReplyTo))
+        var update = _sentUpdates[(long)msg.Body.InReplyTo];
+        _unsentUpdates[(string)msg.Src].RemoveWhere(message => update.Contains(message));
+    }
+
+    [MessageHandler("broadcast")]
+    public void HandleBroadcast(dynamic msg)
+    {
+        var message = (int)msg.Body.Message;
+        _messages.Add(message);
+        foreach (var nodeId in NodeIds)
         {
-            var update = _sentUpdates[inReplyTo];
-            _unackedUpdates[(string)msg.Src].RemoveWhere(m => update.Contains(m));
-            _sentUpdates.Remove(inReplyTo);
+            _unsentUpdates[nodeId].Add(message);
         }
+        Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
@@ -105,11 +67,10 @@ public class EfficientBroadcastNode2 : Node
     [MessageHandler("topology")]
     public void HandleTopology(dynamic msg)
     {
-        var topology = msg.Body.Topology.ToObject<Dictionary<string, string[]>>();
-        _neighbors = topology[NodeId.ToUpper()];
-
-        foreach (var neighbor in _neighbors) _unackedUpdates.Add(neighbor, new HashSet<long>());
-
+        foreach (var nodeId in NodeIds)
+        {
+            _unsentUpdates.Add(nodeId, new HashSet<long>());
+        }
         Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }
