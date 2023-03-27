@@ -9,12 +9,8 @@ public class SingleKafkaNode : Node
     public void HandleSend(dynamic msg)
     {
         var key = (string)msg.Body.Key;
-        if (!_logs.TryGetValue(key, out var log))
-        {
-            log = new List<int>();
-            _logs.Add(key, log);
-        }
-
+        _logs.TryAdd(key, new List<int>());
+        var log = _logs[key];
         log.Add((int)msg.Body.Msg);
         Reply(new { Type = "send_ok", Offset = log.Count - 1, InReplyTo = msg.Body.MsgId });
     }
@@ -27,13 +23,18 @@ public class SingleKafkaNode : Node
         var results = new Dictionary<string, List<int[]>>();
 
         foreach (var (key, offset) in offsets)
+        {
             if (_logs.TryGetValue(key.ToLower(), out var log))
             {
                 var messages = new List<int[]>();
-                for (var i = offset; i < log.Count; i++) messages.Add(new[] { i, log[i] });
-
+                for (var i = offset; i < log.Count; i++)
+                {
+                    messages.Add(new[] { i, log[i] });
+                }
+                
                 results.Add(key.ToLower(), messages);
             }
+        }
 
         Reply(new { Type = "poll_ok", Msgs = results, InReplyTo = msg.Body.MsgId });
     }
@@ -43,7 +44,10 @@ public class SingleKafkaNode : Node
     {
         Dictionary<string, int> offsets = msg.Body.Offsets.ToObject<Dictionary<string, int>>();
 
-        foreach (var (key, offset) in offsets) _commits[key.ToLower()] = offset;
+        foreach (var (key, offset) in offsets)
+        {
+            _commits[key.ToLower()] = offset;
+        }
 
         Reply(new { Type = "commit_offsets_ok", InReplyTo = msg.Body.MsgId });
     }

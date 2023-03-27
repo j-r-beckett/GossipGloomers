@@ -7,8 +7,15 @@ public class CallbackRegistrar
     
     public CallbackRegistrar(Node node, dynamic msg) => (_node, _msg) = (node, msg);
 
-    public void Retry(long delayMillis, int maxRetries = -1)
+    public void EnableRetry(long delayMillis, int maxRetries = -1)
     {
+        _node.PendingReplyIds.Add(_msg.Body.MsgId);
+        Action<dynamic> responseHandler = msg =>
+        {
+            _node.PendingReplyIds.Remove((long)msg.Body.InReplyTo);
+        };
+        _node.AddResponseHandler(_msg.Body.Type + "_ok", _msg.Body.MsgId, responseHandler);
+        
         _node.Schedule(new Job
         {
             Callback = numRetries =>
@@ -19,5 +26,10 @@ public class CallbackRegistrar
             },
             Delay = TimeSpan.FromMilliseconds(delayMillis)
         });
+    }
+
+    public void OnReponse(string type, long inReplyTo, Action<dynamic> handler)
+    {
+        _node.AddResponseHandler(type, inReplyTo, handler);
     }
 }

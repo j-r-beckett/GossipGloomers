@@ -5,44 +5,31 @@ public class FaultTolerantBroadcastNode : Node
     private readonly HashSet<long> _messages = new();
     private readonly Dictionary<long, dynamic> _pendingUpdates = new();
 
-    private long _messageId;
-
-    private static long Next(ref long messageId)
-    {
-        return ++messageId;
-    }
-
-    private static bool IsClientBroadcast(dynamic broadcastMsg)
-    {
-        return broadcastMsg.Src.ToString().StartsWith("c");
-    }
+    private long _messageId = -1;
 
     [MessageHandler("broadcast")]
     public void HandleBroadcast(dynamic msg)
     {
-        if (IsClientBroadcast(msg))
-            foreach (var adjNode in NodeIds)
-                if (adjNode != NodeId)
-                {
-                    var update = new
-                    {
-                        Src = NodeId,
-                        Dest = adjNode,
-                        Body = new { Type = "broadcast", msg.Body.Message, MsgId = Next(ref _messageId) }
-                    };
-                    // _pendingUpdates.Add(_messageId, update);
-                    Send(update).Retry(1500);
-                }
-
         _messages.Add((long)msg.Body.Message);
-        Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
-    }
+        
+        if (((string)msg.Src).StartsWith("c"))
+        {
+            foreach (var nodeId in NodeIds)
+            {
+                if (nodeId != NodeId)
+                {
+                    Send(new
+                        {
+                            Src = NodeId,
+                            Dest = nodeId,
+                            Body = new { Type = "broadcast", msg.Body.Message, MsgId = ++_messageId }
+                        })
+                        .EnableRetry(1500);
+                }
+            }
+        }
 
-    [MessageHandler("broadcast_ok")]
-    public void HandleBroadcastOk(dynamic msg)
-    {
-        _pendingUpdates.Remove((long)msg.Body.InReplyTo);
-        PendingReplyIds.Remove((long)msg.Body.InReplyTo);
+        Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]

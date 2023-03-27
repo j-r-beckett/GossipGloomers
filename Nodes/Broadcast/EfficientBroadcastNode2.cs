@@ -4,7 +4,6 @@ public class EfficientBroadcastNode2 : Node
 {
     private readonly HashSet<long> _messages = new();
     private Dictionary<string, HashSet<long>> _unsentUpdates = new();
-    private Dictionary<long, HashSet<long>> _sentUpdates = new();
 
     private int _messageId = -1;
 
@@ -13,12 +12,14 @@ public class EfficientBroadcastNode2 : Node
     {
         foreach (var nodeId in NodeIds)
         {
-            var update = _unsentUpdates[nodeId];
+            var update = new HashSet<long>(_unsentUpdates[nodeId]);
             Send(new
             {
                 Src = NodeId, Dest = nodeId, Body = new { Type = "update", Update = update, MsgId = ++_messageId }
+            }).OnReponse("update_ok", _messageId, msg =>
+            {
+                _unsentUpdates[nodeId].RemoveWhere(message => update.Contains(message));
             });
-            _sentUpdates.Add(_messageId, new HashSet<long>(update));
         }
     }
 
@@ -32,13 +33,6 @@ public class EfficientBroadcastNode2 : Node
         }
 
         Reply(new { Type = "update_ok", InReplyTo = msg.Body.MsgId });
-    }
-    
-    [MessageHandler("update_ok")]
-    public void HandleUpdateOk(dynamic msg)
-    {
-        var update = _sentUpdates[(long)msg.Body.InReplyTo];
-        _unsentUpdates[(string)msg.Src].RemoveWhere(message => update.Contains(message));
     }
 
     [MessageHandler("broadcast")]

@@ -10,6 +10,8 @@ public abstract class Node
     public string? NodeId;
     public string[] NodeIds;
     public HashSet<long> PendingReplyIds = new();
+    private HashSet<string> _responseTypes = new();
+    private Dictionary<long, Action<dynamic>> _responseHandlers = new();
 
     private PriorityQueue<Job, DateTime> _jobs = new();
     private const int _stdinPollIntervalMillis = 20;
@@ -57,6 +59,12 @@ public abstract class Node
             });
         }
     }
+
+    public void AddResponseHandler(string msgType, long inReplyTo, Action<dynamic> handler)
+    {
+        _responseTypes.Add(msgType);
+        _responseHandlers.Add(inReplyTo, handler);
+    }
     
     public void Schedule(Job job) => _jobs.Enqueue(job, DateTime.Now + job.Delay);
 
@@ -102,15 +110,27 @@ public abstract class Node
         // Console.Error.WriteLine($"processing msg {msgStr}");
         var msg = MessageParser.ParseMessage(msgStr);
         var msgType = (string)msg.Body.Type;
-        var handlers = GetType()
-            .GetMethods()
-            .Where(m => m.GetCustomAttributes()
-                .Any(attr => (attr as MessageHandlerAttribute)?.MessageType.ToString() == msgType));
-        foreach (var handler in handlers)
+        if (_responseTypes.Contains(msgType))
         {
-            _context = msg;
-            handler.Invoke(this, new object[] { msg });
-            _context = null;
+            var inReplyTo = (long)msg.Body.InReplyTo;
+            if (_responseHandlers.TryGetValue(inReplyTo, out var handler))
+            {
+                handler.Invoke(msg);
+                _responseHandlers.Remove(inReplyTo);                
+            }
+        }
+        else
+        {
+            var handlers = GetType()
+                .GetMethods()
+                .Where(m => m.GetCustomAttributes()
+                    .Any(attr => (attr as MessageHandlerAttribute)?.MessageType.ToString() == msgType));
+            foreach (var handler in handlers)
+            {
+                _context = msg;
+                handler.Invoke(this, new object[] { msg });
+                _context = null;
+            }
         }
     }
 
