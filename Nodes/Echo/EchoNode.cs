@@ -3,8 +3,8 @@
 public class EchoNode : Node
 {
     [MessageHandler("echo")]
-    public void HandleEcho(dynamic msg)
+    public async void HandleEcho(dynamic msg)
     {
-        Reply(new { Type = "echo_ok", msg.Body.Echo, InReplyTo = msg.Body.MsgId });
+        Reply(msg,new { Type = "echo_ok", msg.Body.Echo, InReplyTo = msg.Body.MsgId });
     }
 }

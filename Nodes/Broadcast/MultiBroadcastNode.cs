@@ -5,8 +5,6 @@ namespace Nodes.Broadcast;
 public class MultiBroadcastNode : Node
 {
     private readonly HashSet<long> _messages = new();
-    private readonly Dictionary<long, Stopwatch> _broadcastTripTimes = new();
-    private List<long> _pings = new();
 
     private int _messageId;
 
@@ -20,9 +18,8 @@ public class MultiBroadcastNode : Node
         return broadcastMsg.Src.ToString().StartsWith("c");
     }
 
-
     [MessageHandler("broadcast")]
-    public void HandleBroadcast(dynamic msg)
+    public async void HandleBroadcast(dynamic msg)
     {
         _messages.Add((int)msg.Body.Message);
 
@@ -32,24 +29,23 @@ public class MultiBroadcastNode : Node
             {
                 if (adjNode != NodeId)
                 {
-                    Send(new
+                    SendAndWait(new
                     {
                         Src = NodeId,
                         Dest = adjNode,
                         Body = new { Type = "broadcast", msg.Body.Message, MsgId = Next(ref _messageId) }
                     });
-                    _broadcastTripTimes[_messageId] = Stopwatch.StartNew();
                 }
             }
         }
         
-        Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+        Reply(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
-    public void HandleRead(dynamic msg)
+    public async void HandleRead(dynamic msg)
     {
-        Reply(new
+        Reply(msg, new
         {
             Type = "read_ok",
             Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
@@ -57,21 +53,9 @@ public class MultiBroadcastNode : Node
         });
     }
 
-    [MessageHandler("broadcast_ok")]
-    public void HandleBroadcastOk(dynamic msg)
-    {
-        if (NodeId == "n0")
-        {
-            var stopwatch = _broadcastTripTimes[(long)msg.Body.InReplyTo];
-            var pingMillis = stopwatch.ElapsedMilliseconds;
-            _pings.Add(pingMillis);
-            Console.Error.WriteLine(string.Join(", ", _pings));
-        }
-    }
-
     [MessageHandler("topology")]
     public void HandleTopology(dynamic msg)
     {
-        Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+        Reply(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }

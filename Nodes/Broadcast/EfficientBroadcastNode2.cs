@@ -32,7 +32,7 @@ public class EfficientBroadcastNode2 : Node
             _messages.Add(message);
         }
 
-        Reply(new { Type = "update_ok", InReplyTo = msg.Body.MsgId });
+        Reply(msg, new { Type = "update_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("broadcast")]
@@ -44,13 +44,13 @@ public class EfficientBroadcastNode2 : Node
         {
             _unsentUpdates[nodeId].Add(message);
         }
-        Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+        Reply(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
     public void HandleRead(dynamic msg)
     {
-        Reply(new
+        Reply(msg, new
         {
             Type = "read_ok",
             Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
@@ -65,6 +65,6 @@ public class EfficientBroadcastNode2 : Node
         {
             _unsentUpdates.Add(nodeId, new HashSet<long>());
         }
-        Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+        Reply(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }

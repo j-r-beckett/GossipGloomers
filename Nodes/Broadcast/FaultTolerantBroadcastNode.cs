@@ -29,13 +29,13 @@ public class FaultTolerantBroadcastNode : Node
             }
         }
 
-        Reply(new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+        Reply(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
     public void HandleRead(dynamic msg)
     {
-        Reply(new
+        Reply(msg, new
         {
             Type = "read_ok",
             Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
@@ -46,6 +46,6 @@ public class FaultTolerantBroadcastNode : Node
     [MessageHandler("topology")]
     public void HandleTopology(dynamic msg)
     {
-        Reply(new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+        Reply(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }

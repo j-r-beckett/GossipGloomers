@@ -1,6 +1,14 @@
-using Nodes;
+using System.Reflection.Metadata;using Nodes;
 using Nodes.Broadcast;
+using Nodes.Echo;
 using Nodes.GCounter;
 using Nodes.Kafka;
 
-await new EfficientBroadcastNode2().Run();
+void Handle(object sender, UnhandledExceptionEventArgs e)
+{
+    Console.Error.WriteLine($"args: {e}");
+}
+
+AppDomain.CurrentDomain.UnhandledException += Handle;
+
+await new MultiBroadcastNode().Run();

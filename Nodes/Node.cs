@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Reflection;
 using Newtonsoft.Json;
 
@@ -6,120 +7,48 @@ namespace Nodes;
 
 public abstract class Node
 {
-    private dynamic? _context;
     public string? NodeId;
     public string[] NodeIds;
-    public HashSet<long> PendingReplyIds = new();
-    private HashSet<string> _responseTypes = new();
-    private Dictionary<long, Action<dynamic>> _responseHandlers = new();
 
-    private PriorityQueue<Job, DateTime> _jobs = new();
-    private const int _stdinPollIntervalMillis = 20;
+    private Dictionary<long, dynamic> _responses = new();
 
-    private ConcurrentQueue<string> _unprocessedLines = new();
-    private Thread _lineReader;
+    private PriorityQueue<MethodInfo, DateTime> _backgroundJobs = new();
+    private static readonly TimeSpan _eventLoopDelay = TimeSpan.FromMilliseconds(20);
 
     public Node()
     {
-        _lineReader = new(ReadLines);
-        _lineReader.Start(_unprocessedLines);
-        
-        Schedule(new Job
-        {
-            Callback = _ =>
-            {
-                while (_unprocessedLines.TryDequeue(out var line))
-                {
-                    ProcessMessage(line);
-                }
-                return true;
-            },
-            Delay = TimeSpan.FromMilliseconds(_stdinPollIntervalMillis)
-        });
-        
         var backgroundTasks = GetType()
             .GetMethods()
             .Select(m => (method: m, attr: m.GetCustomAttribute<BackgroundProcessAttribute>()))
             .Where(t => t.attr != null)
-            .ToDictionary(t => t.method, t => TimeSpan.FromMilliseconds(t.attr.IntervalMillis));
-
-        foreach (var (method, delay) in backgroundTasks)
-        {
-            Schedule(new Job
-            {
-                Callback = _ =>
-                {
-                    if (NodeId != null)
-                    {
-                        method.Invoke(this, Array.Empty<object>());
-                    }
-                    return true;
-                },
-                Delay = delay
-            });
-        }
+            .Select(t => (t.method, delay: TimeSpan.FromMilliseconds(t.attr.IntervalMillis)));
+        
+        _backgroundJobs.EnqueueRange(backgroundTasks.Select(t => (t.method, DateTime.Now + t.delay)));
     }
 
-    public void AddResponseHandler(string msgType, long inReplyTo, Action<dynamic> handler)
-    {
-        _responseTypes.Add(msgType);
-        _responseHandlers.Add(inReplyTo, handler);
-    }
-    
-    public void Schedule(Job job) => _jobs.Enqueue(job, DateTime.Now + job.Delay);
 
-    public Task Run()
+    public async Task Run()
     {
         while (true)
         {
-            if (_jobs.TryPeek(out var job, out var priority) && priority < DateTime.Now)
-            {
-                _jobs.Dequeue();
-                var repeat = job.Callback.Invoke(job.Invocations);
-                if (repeat)
-                {
-                    Schedule(job with { Invocations = job.Invocations + 1 });
-                }
-            }
-            
-            Thread.Sleep(_stdinPollIntervalMillis);
+            using var reader = new StreamReader(Console.OpenStandardInput());
+            ProcessMessage(await reader.ReadLineAsync());
         }
     }
 
-    private static void ReadLines(object obj)
+    public async Task ProcessMessage(string msgStr)
     {
-        var lines = (ConcurrentQueue<string>)obj;
-        while (true)
-        {
-            var line = Console.ReadLine();
-            if (line != null) lines.Enqueue(line);
-        }
-    }
-
-    public CallbackRegistrar Send(dynamic msg)
-    {
-        PendingReplyIds.Add((long)msg.Body.MsgId);
-        var msgJson = JsonConvert.SerializeObject(msg);
-        // Log($"sending msg {msgJson}");
-        Console.WriteLine(msgJson);
-        return new CallbackRegistrar(this, msg);
-    }
-
-    public void ProcessMessage(string msgStr)
-    {
-        // Console.Error.WriteLine($"processing msg {msgStr}");
         var msg = MessageParser.ParseMessage(msgStr);
         var msgType = (string)msg.Body.Type;
-        if (_responseTypes.Contains(msgType))
+        try
         {
             var inReplyTo = (long)msg.Body.InReplyTo;
-            if (_responseHandlers.TryGetValue(inReplyTo, out var handler))
+            if (_responses.TryGetValue(inReplyTo, out var v) && v == null)
             {
-                handler.Invoke(msg);
-                _responseHandlers.Remove(inReplyTo);                
+                _responses[inReplyTo] = msg;
             }
         }
-        else
+        catch (Exception)
         {
             var handlers = GetType()
                 .GetMethods()
@@ -127,35 +56,56 @@ public abstract class Node
                     .Any(attr => (attr as MessageHandlerAttribute)?.MessageType.ToString() == msgType));
             foreach (var handler in handlers)
             {
-                _context = msg;
                 handler.Invoke(this, new object[] { msg });
-                _context = null;
             }
         }
     }
 
     [MessageHandler("init")]
-    public void HandleInit(dynamic msg)
+    public async Task HandleInit(dynamic msg)
     {
         NodeId = msg.Body.NodeId;
         NodeIds = msg.Body.NodeIds.ToObject<string[]>();
-        Reply(new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
+        Reply(msg, new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
+    }
+    
+    public CallbackRegistrar Send(dynamic msg)
+    {
+        // PendingReplyIds.Add((long)msg.Body.MsgId);
+        var msgJson = JsonConvert.SerializeObject(msg);
+        Console.WriteLine(msgJson);
+        return new CallbackRegistrar(this, msg);
     }
 
-    protected void Reply(dynamic payload)
+    public async Task SendAndWait(dynamic msg)
     {
-        var msg = new { Src = NodeId, Dest = _context.Src, Body = payload };
+        var id = (long)msg.Body.MsgId;
         var msgJson = JsonConvert.SerializeObject(msg);
-        // Log($"sending msg {msgJson}");
+        Console.WriteLine(msgJson);
+        
+        var resendDelay = TimeSpan.FromMilliseconds(500);
+        var pollDelay = _eventLoopDelay / 2;
+        var lastSentTime = DateTimeOffset.Now;
+        _responses.Add(id, null);
+        while (_responses[id] == null)
+        {
+            if (DateTime.Now - lastSentTime > resendDelay)
+            {
+                Console.WriteLine(msgJson);
+                lastSentTime = DateTimeOffset.Now;
+            }
+
+            await Task.Delay(pollDelay);
+        }
+
+        var response = _responses[id];
+        _responses.Remove(id);
+    }
+
+    protected void Reply(dynamic request, dynamic responseBody)
+    {
+        var msg = new { Src = NodeId, Dest = request.Src, Body = responseBody };
+        var msgJson = JsonConvert.SerializeObject(msg);
         Console.WriteLine(msgJson);
     }
-}
-
-public record Job
-{
-    // Callback(n) => bool, n is number of invocations (n=0 on first invocation), rerun callback after interval
-    // if callback returns true
-    public required Func<int, bool> Callback { get; init; }
-    public required TimeSpan Delay { get; init; }
-    public int Invocations { get; init; } = 0;
 }
