@@ -26,13 +26,24 @@ public abstract class Node
         _backgroundJobs.EnqueueRange(backgroundTasks.Select(t => (t.method, DateTime.Now + t.delay)));
     }
 
-
     public async Task Run()
     {
+        var lineBuffer = new ConcurrentQueue<string>();
+        Task.Run(async () =>
+        {
+            var reader = new StreamReader(Console.OpenStandardInput());
+            while (true)
+            {
+                lineBuffer.Enqueue(await reader.ReadLineAsync());
+            }
+        });
+        
         while (true)
         {
-            using var reader = new StreamReader(Console.OpenStandardInput());
-            ProcessMessage(await reader.ReadLineAsync());
+            if (lineBuffer.TryDequeue(out var line))
+            {
+                ProcessMessage(line);
+            }
         }
     }
 
