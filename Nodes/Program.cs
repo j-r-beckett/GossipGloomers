@@ -5,4 +5,4 @@ using Nodes.Echo;
 using Nodes.GCounter;
 using Nodes.Kafka;
 
-await new MultiBroadcastNode().Run();
+new MultiBroadcastNode().Run();

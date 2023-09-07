@@ -16,9 +16,6 @@ public class EfficientBroadcastNode2 : Node
             Send(new
             {
                 Src = NodeId, Dest = nodeId, Body = new { Type = "update", Update = update, MsgId = ++_messageId }
-            }).OnReponse("update_ok", _messageId, msg =>
-            {
-                _unsentUpdates[nodeId].RemoveWhere(message => update.Contains(message));
             });
         }
     }
@@ -32,7 +29,7 @@ public class EfficientBroadcastNode2 : Node
             _messages.Add(message);
         }
 
-        Reply(msg, new { Type = "update_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "update_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("broadcast")]
@@ -44,13 +41,13 @@ public class EfficientBroadcastNode2 : Node
         {
             _unsentUpdates[nodeId].Add(message);
         }
-        Reply(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
     public void HandleRead(dynamic msg)
     {
-        Reply(msg, new
+        Respond(msg, new
         {
             Type = "read_ok",
             Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
@@ -65,6 +62,6 @@ public class EfficientBroadcastNode2 : Node
         {
             _unsentUpdates.Add(nodeId, new HashSet<long>());
         }
-        Reply(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }

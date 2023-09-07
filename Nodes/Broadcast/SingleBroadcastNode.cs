@@ -8,18 +8,18 @@ public class SingleBroadcastNode : Node
     public void HandleBroadcast(dynamic msg)
     {
         _messages.Add((int)msg.Body.Message);
-        Reply(msg,new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg,new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
     public void HandleRead(dynamic msg)
     {
-        Reply(msg, new { Type = "read_ok", Messages = _messages, InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "read_ok", Messages = _messages, InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("topology")]
     public void HandleTopology(dynamic msg)
     {
-        Reply(msg,new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg,new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }

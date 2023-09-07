@@ -15,13 +15,13 @@ public class CounterNode : Node
     public void HandleAdd(dynamic msg)
     {
         _internalCounter += (long)msg.Body.Delta;
-        Reply(msg, new { Type = "add_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "add_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
     public void HandleRead(dynamic msg)
     {
-        Reply(msg, new
+        Respond(msg, new
         {
             Type = "read_ok", Value = _internalCounter + _externalCounters.Values.Sum(), InReplyTo = msg.Body.MsgId
         });

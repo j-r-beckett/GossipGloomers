@@ -19,23 +19,22 @@ public class FaultTolerantBroadcastNode : Node
                 if (nodeId != NodeId)
                 {
                     Send(new
-                        {
-                            Src = NodeId,
-                            Dest = nodeId,
-                            Body = new { Type = "broadcast", msg.Body.Message, MsgId = ++_messageId }
-                        })
-                        .EnableRetry(1500);
+                    {
+                        Src = NodeId,
+                        Dest = nodeId,
+                        Body = new { Type = "broadcast", msg.Body.Message, MsgId = ++_messageId }
+                    });
                 }
             }
         }
 
-        Reply(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
     public void HandleRead(dynamic msg)
     {
-        Reply(msg, new
+        Respond(msg, new
         {
             Type = "read_ok",
             Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
@@ -46,6 +45,6 @@ public class FaultTolerantBroadcastNode : Node
     [MessageHandler("topology")]
     public void HandleTopology(dynamic msg)
     {
-        Reply(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }

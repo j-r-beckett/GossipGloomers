@@ -1,10 +1,12 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace Nodes.Broadcast;
 
 public class MultiBroadcastNode : Node
 {
-    private readonly HashSet<long> _messages = new();
+    // Used as a HashSet
+    private readonly ConcurrentDictionary<long, byte> _messages = new();
 
     private int _messageId;
 
@@ -19,9 +21,9 @@ public class MultiBroadcastNode : Node
     }
 
     [MessageHandler("broadcast")]
-    public async void HandleBroadcast(dynamic msg)
+    public void HandleBroadcast(dynamic msg)
     {
-        _messages.Add((int)msg.Body.Message);
+        _messages[(long)msg.Body.Message] = 0;
 
         if (IsClientBroadcast(msg))
         {
@@ -29,7 +31,7 @@ public class MultiBroadcastNode : Node
             {
                 if (adjNode != NodeId)
                 {
-                    SendAndWait(new
+                    Send(new
                     {
                         Src = NodeId,
                         Dest = adjNode,
@@ -39,16 +41,16 @@ public class MultiBroadcastNode : Node
             }
         }
         
-        Reply(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("read")]
-    public async void HandleRead(dynamic msg)
+    public void HandleRead(dynamic msg)
     {
-        Reply(msg, new
+        Respond(msg, new
         {
             Type = "read_ok",
-            Messages = _messages.AsEnumerable().OrderBy(n => n).ToList(), // sort to make it easier to read output
+            Messages = _messages.Keys.OrderBy(n => n).ToList(), // sort to make it easier to read output
             InReplyTo = msg.Body.MsgId
         });
     }
@@ -56,6 +58,6 @@ public class MultiBroadcastNode : Node
     [MessageHandler("topology")]
     public void HandleTopology(dynamic msg)
     {
-        Reply(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
+        Respond(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }

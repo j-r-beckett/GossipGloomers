@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Reflection;
 using Newtonsoft.Json;
 
@@ -7,13 +6,17 @@ namespace Nodes;
 
 public abstract class Node
 {
+    private static readonly TimeSpan _MainLoopDelay = TimeSpan.FromMilliseconds(10);
+    private static readonly TimeSpan _ResendDelay = TimeSpan.FromMilliseconds(500);
+
+    private readonly PriorityQueue<BackgroundJob, DateTime> _backgroundJobs = new();
+
+    private readonly ConcurrentQueue<dynamic> _pendingRequests = new();
+    private readonly ConcurrentDictionary<long, dynamic> _responses = new();
     public string? NodeId;
     public string[] NodeIds;
 
-    private Dictionary<long, dynamic> _responses = new();
-
-    private PriorityQueue<MethodInfo, DateTime> _backgroundJobs = new();
-    private static readonly TimeSpan _eventLoopDelay = TimeSpan.FromMilliseconds(20);
+    private record BackgroundJob(Func<int, bool> Job, TimeSpan delay, int NumInvocations);
 
     public Node()
     {
@@ -22,101 +25,132 @@ public abstract class Node
             .Select(m => (method: m, attr: m.GetCustomAttribute<BackgroundProcessAttribute>()))
             .Where(t => t.attr != null)
             .Select(t => (t.method, delay: TimeSpan.FromMilliseconds(t.attr.IntervalMillis)));
-        
-        _backgroundJobs.EnqueueRange(backgroundTasks.Select(t => (t.method, DateTime.Now + t.delay)));
+
+        foreach (var (method, delay) in backgroundTasks)
+        {
+            var backgroundJob = new BackgroundJob(
+                Job: n => (bool)method.Invoke(this, new object[n]), 
+                delay: delay,
+                NumInvocations: 0);
+            _backgroundJobs.Enqueue(backgroundJob ,DateTime.Now + delay);
+        }
     }
 
-    public async Task Run()
+    public void Run()
     {
         var lineBuffer = new ConcurrentQueue<string>();
-        Task.Run(async () =>
+        new Thread(() =>
         {
             var reader = new StreamReader(Console.OpenStandardInput());
             while (true)
             {
-                lineBuffer.Enqueue(await reader.ReadLineAsync());
+                lineBuffer.Enqueue(reader.ReadLine());
             }
-        });
-        
+        }).Start();
+
         while (true)
         {
-            if (lineBuffer.TryDequeue(out var line))
+            // Process incoming messages
+            while (lineBuffer.TryDequeue(out var line))
             {
-                ProcessMessage(line);
+                var msg = MessageParser.ParseMessage(line);
+                try
+                {
+                    var inReplyTo = (long)msg.Body.InReplyTo;
+                    if (_responses.TryGetValue(inReplyTo, out var response) && response == null)
+                    {
+                        _responses[inReplyTo] = msg;
+                    }
+                }
+                catch (Exception)  // TODO: find exactly which type of exception
+                {
+                    var msgType = (string)msg.Body.Type;
+                    var handlers = GetType()
+                        .GetMethods()
+                        .Where(m => m.GetCustomAttributes()
+                            .Any(attr => (attr as MessageHandlerAttribute)?.MessageType.ToString() == msgType));
+                    foreach (var handler in handlers)
+                    {
+                        new Thread(() => handler.Invoke(this, new object[] { msg })).Start();
+                    }
+                }
             }
+            
+            // Create background jobs for new requests
+            while (_pendingRequests.TryDequeue(out var request))
+            {
+                bool Job(int _)
+                {
+                    var id = (long)request.Body.MsgId;
+                    if (_responses.TryGetValue(id, out var response) && response == null)
+                    {
+                        WriteMessage(request);
+                        return true;
+                    }
+                    return false;
+                }
+                
+                _backgroundJobs.Enqueue(new BackgroundJob(Job: Job, delay: _ResendDelay, NumInvocations: 0), DateTime.Now);
+            }
+            
+            // Run background jobs
+            while (_backgroundJobs.TryPeek(out var backgroundJob,  out var executionTime) && executionTime <= DateTime.Now)
+            {
+                _backgroundJobs.Dequeue();
+                if (backgroundJob.Job.Invoke(backgroundJob.NumInvocations))
+                {
+                    _backgroundJobs.Enqueue(backgroundJob with { NumInvocations = backgroundJob.NumInvocations + 1},
+                        DateTime.Now + backgroundJob.delay);
+                }
+            }
+            
+            // Sleep! zz
+            Thread.Sleep(_MainLoopDelay);
         }
     }
 
-    public async Task ProcessMessage(string msgStr)
+    public ResponseFuture Send(dynamic msg)
     {
-        var msg = MessageParser.ParseMessage(msgStr);
-        var msgType = (string)msg.Body.Type;
-        try
-        {
-            var inReplyTo = (long)msg.Body.InReplyTo;
-            if (_responses.TryGetValue(inReplyTo, out var v) && v == null)
-            {
-                _responses[inReplyTo] = msg;
-            }
-        }
-        catch (Exception)
-        {
-            var handlers = GetType()
-                .GetMethods()
-                .Where(m => m.GetCustomAttributes()
-                    .Any(attr => (attr as MessageHandlerAttribute)?.MessageType.ToString() == msgType));
-            foreach (var handler in handlers)
-            {
-                handler.Invoke(this, new object[] { msg });
-            }
-        }
+        var id = (long)msg.Body.MsgId;
+        _responses.TryAdd(id, null);
+        _pendingRequests.Enqueue(msg);
+        return new ResponseFuture(this, id);
     }
 
+    protected void Respond(dynamic request, dynamic responseBody) 
+        => WriteMessage(new { Src = NodeId, Dest = request.Src, Body = responseBody });
+    
+    public void WriteMessage(dynamic msg) => Console.WriteLine(JsonConvert.SerializeObject(msg));
+    
     [MessageHandler("init")]
-    public async Task HandleInit(dynamic msg)
+    public void HandleInit(dynamic msg)
     {
         NodeId = msg.Body.NodeId;
         NodeIds = msg.Body.NodeIds.ToObject<string[]>();
-        Reply(msg, new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
-    }
-    
-    public CallbackRegistrar Send(dynamic msg)
-    {
-        // PendingReplyIds.Add((long)msg.Body.MsgId);
-        var msgJson = JsonConvert.SerializeObject(msg);
-        Console.WriteLine(msgJson);
-        return new CallbackRegistrar(this, msg);
+        Respond(msg, new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
     }
 
-    public async Task SendAndWait(dynamic msg)
+    public class ResponseFuture
     {
-        var id = (long)msg.Body.MsgId;
-        var msgJson = JsonConvert.SerializeObject(msg);
-        Console.WriteLine(msgJson);
-        
-        var resendDelay = TimeSpan.FromMilliseconds(500);
-        var pollDelay = _eventLoopDelay / 2;
-        var lastSentTime = DateTimeOffset.Now;
-        _responses.Add(id, null);
-        while (_responses[id] == null)
+        private readonly long _msgId;
+        private readonly Node _node;
+        private dynamic _response;
+
+        public ResponseFuture(Node node, long msgId)
         {
-            if (DateTime.Now - lastSentTime > resendDelay)
-            {
-                Console.WriteLine(msgJson);
-                lastSentTime = DateTimeOffset.Now;
-            }
-
-            await Task.Delay(pollDelay);
+            (_node, _msgId) = (node, msgId);
         }
 
-        var response = _responses[id];
-        _responses.Remove(id);
-    }
+        public bool TryGetResponse(out dynamic response)
+        {
+            response = default;
+            if (_response != null || _node._responses.TryRemove(_msgId, out _response))
+            {
+                response = _response;
+                return true;
+            }
 
-    protected void Reply(dynamic request, dynamic responseBody)
-    {
-        var msg = new { Src = NodeId, Dest = request.Src, Body = responseBody };
-        var msgJson = JsonConvert.SerializeObject(msg);
-        Console.WriteLine(msgJson);
+            return false;
+        }
     }
 }
