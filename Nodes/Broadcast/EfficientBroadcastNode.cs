@@ -1,19 +1,19 @@
 namespace Nodes.Broadcast;
 
-public class EfficientBroadcastNode2 : Node
+public class EfficientBroadcastNode : Node
 {
     private readonly HashSet<long> _messages = new();
     private Dictionary<string, HashSet<long>> _unsentUpdates = new();
 
     private int _messageId = -1;
 
-    [BackgroundProcess(1250)]
+    [BackgroundProcess(500)]
     public void SendUpdates()
     {
         foreach (var nodeId in NodeIds)
         {
             var update = new HashSet<long>(_unsentUpdates[nodeId]);
-            Send(new
+            WriteMessage(new
             {
                 Src = NodeId, Dest = nodeId, Body = new { Type = "update", Update = update, MsgId = ++_messageId }
             });

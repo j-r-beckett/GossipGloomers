@@ -27,18 +27,20 @@ public class CounterNode : Node
         });
     }
 
-    [BackgroundProcess(50)]
+    [BackgroundProcess(100)]
     public void InitiateExternalCounterUpdate()
     {
         foreach (var node in NodeIds)
+        {
             if (node != NodeId)
             {
                 _pendingExternalCounterUpdates.Add(Next(ref _messageId), node);
-                Send(new
+                WriteMessage(new
                 {
                     Src = NodeId, Dest = "seq-kv", Body = new { Type = "read", Key = node, MsgId = _messageId }
                 });
             }
+        }
     }
 
     [MessageHandler("read_ok")]
@@ -55,7 +57,7 @@ public class CounterNode : Node
     [BackgroundProcess(100)]
     public void PropagateInternalCounter()
     {
-        Send(new
+        WriteMessage(new
         {
             Src = NodeId,
             Dest = "seq-kv",

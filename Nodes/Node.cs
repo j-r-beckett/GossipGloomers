@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using Microsoft.CSharp.RuntimeBinder;
 using Newtonsoft.Json;
 
 namespace Nodes;
@@ -29,10 +30,17 @@ public abstract class Node
         foreach (var (method, delay) in backgroundTasks)
         {
             var backgroundJob = new BackgroundJob(
-                Job: n => (bool)method.Invoke(this, new object[n]), 
+                Job: _ =>
+                {
+                    if (NodeId != null)  // only run background methods after the node has finished initializing
+                    {
+                        method.Invoke(this, Array.Empty<object>());
+                    }
+                    return true;
+                }, 
                 delay: delay,
                 NumInvocations: 0);
-            _backgroundJobs.Enqueue(backgroundJob ,DateTime.Now + delay);
+            _backgroundJobs.Enqueue(backgroundJob, DateTime.Now);
         }
     }
 
@@ -54,15 +62,12 @@ public abstract class Node
             while (lineBuffer.TryDequeue(out var line))
             {
                 var msg = MessageParser.ParseMessage(line);
-                try
+                var inReplyTo = (long?) msg.Body.InReplyTo;
+                if (inReplyTo.HasValue && _responses.TryGetValue(inReplyTo.Value, out var response) && response == null)
                 {
-                    var inReplyTo = (long)msg.Body.InReplyTo;
-                    if (_responses.TryGetValue(inReplyTo, out var response) && response == null)
-                    {
-                        _responses[inReplyTo] = msg;
-                    }
+                    _responses[inReplyTo.Value] = msg;
                 }
-                catch (Exception)  // TODO: find exactly which type of exception
+                else
                 {
                     var msgType = (string)msg.Body.Type;
                     var handlers = GetType()
