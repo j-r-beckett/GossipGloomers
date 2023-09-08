@@ -32,7 +32,7 @@ public abstract class Node
             var backgroundJob = new BackgroundJob(
                 Job: _ =>
                 {
-                    if (NodeId != null)  // only run background methods after the node has finished initializing
+                    if (NodeId != null && NodeIds != null)  // only run background methods after the node has finished initializing
                     {
                         method.Invoke(this, Array.Empty<object>());
                     }

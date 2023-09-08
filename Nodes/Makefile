@@ -8,7 +8,7 @@ singleBroadcast:
 	./maelstrom test -w broadcast --bin build/bin/Debug/net7.0/Nodes.exe --node-count 1 --time-limit 20 --rate 10 --log-stderr
 
 multiBroadcast:
-	./maelstrom test -w broadcast --bin build/bin/Debug/net7.0/Nodes.exe --node-count 5 --time-limit 20 --rate 10 --log-stderr --log-net-send --log-net-recv
+	./maelstrom test -w broadcast --bin build/bin/Debug/net7.0/Nodes.exe --node-count 5 --time-limit 20 --rate 10 --log-stderr 
 
 faultyBroadcast:
 	./maelstrom test -w broadcast --bin build/bin/Debug/net7.0/Nodes.exe --node-count 5 --time-limit 20 --rate 10 --nemesis partition --log-stderr

@@ -1,45 +1,38 @@
+using System.Collections.Immutable;
+
 namespace Nodes.Broadcast;
 
-public class EfficientBroadcastNode : Node
+public class BroadcastNode : Node
 {
-    private readonly HashSet<long> _messages = new();
-    private Dictionary<string, HashSet<long>> _unsentUpdates = new();
-
+    private ImmutableHashSet<long> _messages = ImmutableHashSet<long>.Empty;
+    private HashSet<string> _neighbors = new();
+    
+    private static int Next(ref int messageId) => ++messageId;
     private int _messageId = -1;
-
-    [BackgroundProcess(500)]
-    public void SendUpdates()
-    {
-        foreach (var nodeId in NodeIds)
-        {
-            var update = new HashSet<long>(_unsentUpdates[nodeId]);
-            WriteMessage(new
-            {
-                Src = NodeId, Dest = nodeId, Body = new { Type = "update", Update = update, MsgId = ++_messageId }
-            });
-        }
-    }
 
     [MessageHandler("update")]
     public void HandleUpdate(dynamic msg)
     {
         HashSet<long> update = msg.Body.Update.ToObject<HashSet<long>>();
-        foreach (var message in update)
-        {
-            _messages.Add(message);
-        }
-
-        Respond(msg, new { Type = "update_ok", InReplyTo = msg.Body.MsgId });
+        ImmutableInterlocked.Update(ref _messages, messages => messages.Union(update));
     }
 
     [MessageHandler("broadcast")]
     public void HandleBroadcast(dynamic msg)
     {
         var message = (int)msg.Body.Message;
-        _messages.Add(message);
+        ImmutableInterlocked.Update(ref _messages, messages => messages.Add(message));
         foreach (var nodeId in NodeIds)
         {
-            _unsentUpdates[nodeId].Add(message);
+            if (nodeId != NodeId)
+            {
+                WriteMessage(new
+                {
+                    Src = NodeId,
+                    Dest = nodeId,
+                    Body = new { Type = "update", Update = _messages, MsgId = Next(ref _messageId) }
+                });
+            }
         }
         Respond(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
@@ -58,10 +51,6 @@ public class EfficientBroadcastNode : Node
     [MessageHandler("topology")]
     public void HandleTopology(dynamic msg)
     {
-        foreach (var nodeId in NodeIds)
-        {
-            _unsentUpdates.Add(nodeId, new HashSet<long>());
-        }
         Respond(msg, new { Type = "topology_ok", InReplyTo = msg.Body.MsgId });
     }
 }
