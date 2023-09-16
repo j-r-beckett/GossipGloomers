@@ -48,7 +48,7 @@ public abstract class Node
 
     public void Run()
     {
-        // Read lines into a buffer in the background
+        // Spin off a thread to read from stdin into a buffer
         var lineBuffer = new ConcurrentQueue<string>();
         new Thread(() =>
         {
@@ -62,7 +62,7 @@ public abstract class Node
         // Main loop
         while (true)
         {
-            // Process incoming messages
+            // Process all lines in buffer
             while (lineBuffer.TryDequeue(out var line))
             {
                 var msg = MessageParser.ParseMessage(line);
@@ -74,8 +74,10 @@ public abstract class Node
                         .GetMethods()
                         .Where(m => m.GetCustomAttributes()
                             .Any(attr => (attr as MessageHandlerAttribute)?.MessageType.ToString() == msgType));
+                    // TODO: throw exception if more than one handler found?
                     foreach (var handler in handlers)
                     {
+                        // Spin off a new thread to handle each request
                         new Thread(() => handler.Invoke(this, new object[] { msg })).Start();
                     }
                 }

@@ -29,6 +29,7 @@ public class MessageProcessor
             {
                 Thread.Sleep(10);
             }
+            
             return futures.Select(future =>
                 {
                     future.TryGetResponse(out var response);
