@@ -12,7 +12,7 @@ public class SingleKafkaNode : Node
         _logs.TryAdd(key, new List<int>());
         var log = _logs[key];
         log.Add((int)msg.Body.Msg);
-        Respond(msg, new { Type = "send_ok", Offset = log.Count - 1, InReplyTo = msg.Body.MsgId });
+        WriteResponse(msg, new { Type = "send_ok", Offset = log.Count - 1, InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("poll")]
@@ -36,7 +36,7 @@ public class SingleKafkaNode : Node
             }
         }
 
-        Respond(msg, new { Type = "poll_ok", Msgs = results, InReplyTo = msg.Body.MsgId });
+        WriteResponse(msg, new { Type = "poll_ok", Msgs = results, InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("commit_offsets")]
@@ -49,7 +49,7 @@ public class SingleKafkaNode : Node
             _commits[key.ToLower()] = offset;
         }
 
-        Respond(msg, new { Type = "commit_offsets_ok", InReplyTo = msg.Body.MsgId });
+        WriteResponse(msg, new { Type = "commit_offsets_ok", InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("list_committed_offsets")]
@@ -59,6 +59,6 @@ public class SingleKafkaNode : Node
 
         var offsets = keys.Where(k => _commits.ContainsKey(k)).ToDictionary(k => k, k => _commits[k]);
 
-        Respond(msg, new { Type = "list_committed_offsets_ok", Offsets = offsets, InReplyTo = msg.Body.MsgId });
+        WriteResponse(msg, new { Type = "list_committed_offsets_ok", Offsets = offsets, InReplyTo = msg.Body.MsgId });
     }
 }

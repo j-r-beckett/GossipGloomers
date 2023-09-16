@@ -5,6 +5,6 @@ public class GenerateIdNode : Node
     [MessageHandler("generate")]
     public void HandleGenerate(dynamic msg)
     {
-        Respond(msg,new { Type = "generate_ok", Id = Guid.NewGuid().ToString(), InReplyTo = msg.Body.MsgId });
+        WriteResponse(msg,new { Type = "generate_ok", Id = Guid.NewGuid().ToString(), InReplyTo = msg.Body.MsgId });
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net.NetworkInformation;
 using System.Reflection;
 using Microsoft.CSharp.RuntimeBinder;
 using Newtonsoft.Json;
@@ -12,8 +13,9 @@ public abstract class Node
 
     private readonly PriorityQueue<BackgroundJob, DateTime> _backgroundJobs = new();
 
-    private readonly ConcurrentQueue<dynamic> _pendingRequests = new();
-    private readonly ConcurrentDictionary<long, dynamic> _responses = new();
+    private readonly MessageProcessor _messageProcessor = new();
+    private readonly ConcurrentQueue<(dynamic, MessageProcessor.ResponseFuture)> _unprocessedRequests = new();
+    
     public string? NodeId;
     public string[] NodeIds;
 
@@ -46,6 +48,7 @@ public abstract class Node
 
     public void Run()
     {
+        // Read lines into a buffer in the background
         var lineBuffer = new ConcurrentQueue<string>();
         new Thread(() =>
         {
@@ -56,19 +59,16 @@ public abstract class Node
             }
         }).Start();
 
+        // Main loop
         while (true)
         {
             // Process incoming messages
             while (lineBuffer.TryDequeue(out var line))
             {
                 var msg = MessageParser.ParseMessage(line);
-                var inReplyTo = (long?) msg.Body.InReplyTo;
-                if (inReplyTo.HasValue && _responses.TryGetValue(inReplyTo.Value, out var response) && response == null)
+                if (!_messageProcessor.TryProcessResponse(msg))  // Updates response future if message is a response
                 {
-                    _responses[inReplyTo.Value] = msg;
-                }
-                else
-                {
+                    // Message is NOT a response to another message, so we pass it to a message handler
                     var msgType = (string)msg.Body.Type;
                     var handlers = GetType()
                         .GetMethods()
@@ -81,18 +81,15 @@ public abstract class Node
                 }
             }
             
-            // Create background jobs for new requests
-            while (_pendingRequests.TryDequeue(out var request))
+            // Create background jobs for unprocessed requests
+            while (_unprocessedRequests.TryDequeue(out var request))
             {
                 bool Job(int _)
                 {
-                    var id = (long)request.Body.MsgId;
-                    if (_responses.TryGetValue(id, out var response) && response == null)
-                    {
-                        WriteMessage(request);
-                        return true;
-                    }
-                    return false;
+                    var (msg, future) = request;
+                    var hasReceivedResponse = future.TryGetResponse(out var _);
+                    if (!hasReceivedResponse) WriteMessage(msg);
+                    return !hasReceivedResponse;
                 }
                 
                 _backgroundJobs.Enqueue(new BackgroundJob(Job: Job, delay: _ResendDelay, NumInvocations: 0), DateTime.Now);
@@ -114,15 +111,14 @@ public abstract class Node
         }
     }
 
-    public ResponseFuture Send(dynamic msg)
+    public MessageProcessor.ResponseFuture SendRequest(dynamic msg)
     {
-        var id = (long)msg.Body.MsgId;
-        _responses.TryAdd(id, null);
-        _pendingRequests.Enqueue(msg);
-        return new ResponseFuture(this, id);
+        var future = _messageProcessor.ProcessRequest(msg);
+        _unprocessedRequests.Enqueue((msg, future));
+        return future;
     }
 
-    protected void Respond(dynamic request, dynamic responseBody) 
+    protected void WriteResponse(dynamic request, dynamic responseBody) 
         => WriteMessage(new { Src = NodeId, Dest = request.Src, Body = responseBody });
     
     public void WriteMessage(dynamic msg) => Console.WriteLine(JsonConvert.SerializeObject(msg));
@@ -132,30 +128,6 @@ public abstract class Node
     {
         NodeId = msg.Body.NodeId;
         NodeIds = msg.Body.NodeIds.ToObject<string[]>();
-        Respond(msg, new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
-    }
-
-    public class ResponseFuture
-    {
-        private readonly long _msgId;
-        private readonly Node _node;
-        private dynamic _response;
-
-        public ResponseFuture(Node node, long msgId)
-        {
-            (_node, _msgId) = (node, msgId);
-        }
-
-        public bool TryGetResponse(out dynamic response)
-        {
-            response = default;
-            if (_response != null || _node._responses.TryRemove(_msgId, out _response))
-            {
-                response = _response;
-                return true;
-            }
-
-            return false;
-        }
+        WriteResponse(msg, new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
     }
 }
