@@ -21,3 +21,6 @@ counter:
 
 singleKafka:
 	./maelstrom test -w kafka --bin build/bin/Debug/net7.0/Nodes.exe --node-count 1 --concurrency 2n --time-limit 20 --rate 1000 --log-stderr
+	
+multiKafka:
+	./maelstrom test -w kafka --bin build/bin/Debug/net7.0/Nodes.exe --node-count 2 --concurrency 2n --time-limit 20 --rate 1000 --log-stderr
