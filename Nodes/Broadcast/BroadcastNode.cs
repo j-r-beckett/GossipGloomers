@@ -6,8 +6,6 @@ public class BroadcastNode : Node
 {
     private ImmutableHashSet<long> _messages = ImmutableHashSet<long>.Empty;
     
-    private static int Next(ref int messageId) => ++messageId;
-    private int _messageId = -1;
     private static bool IsFromClient(dynamic msg) => msg.Src.ToString().ToLower().StartsWith("c");
 
     [MessageHandler("broadcast")]

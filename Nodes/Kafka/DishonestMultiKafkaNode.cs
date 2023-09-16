@@ -8,9 +8,6 @@ public class DishonestMultiKafkaNode : Node
     private readonly ConcurrentDictionary<string, long> _commits = new();
     private readonly ConcurrentDictionary<string, List<long>> _logs = new();
     
-    private static int Next(ref int messageId) => ++messageId;
-    private int _messageId = -1;
-    
     private string Host(string log) => $"n{Math.Abs(Hash(log) % NodeIds.Length)}";
 
     // https://stackoverflow.com/a/36846609

@@ -5,11 +5,7 @@ public class CounterNode : Node
     private readonly Dictionary<string, long> _externalCounters = new();
     private long _internalCounter;
 
-    private long _messageId;
-
     private readonly Dictionary<long, string> _pendingExternalCounterUpdates = new();
-
-    private static long Next(ref long messageId) => ++messageId;
 
     [MessageHandler("add")]
     public void HandleAdd(dynamic msg)

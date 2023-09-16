@@ -132,4 +132,7 @@ public abstract class Node
         NodeIds = msg.Body.NodeIds.ToObject<string[]>();
         WriteResponse(msg, new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
     }
+    
+    protected static int Next(ref int messageId) => ++messageId;
+    protected int _messageId = -1;
 }
