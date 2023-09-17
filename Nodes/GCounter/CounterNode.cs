@@ -1,6 +1,6 @@
 namespace Nodes.GCounter;
 
-public class CounterNode : Node
+public class CounterNode : InitNode
 {
     private readonly Dictionary<string, long> _externalCounters = new();
     private long _internalCounter;

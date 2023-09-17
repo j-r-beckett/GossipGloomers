@@ -1,6 +1,6 @@
 namespace Nodes.Kafka;
 
-public class SingleKafkaNode : Node
+public class SingleKafkaNode : InitNode
 {
     private readonly Dictionary<string, int> _commits = new();
     private readonly Dictionary<string, List<int>> _logs = new();

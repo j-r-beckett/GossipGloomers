@@ -1,6 +1,6 @@
 ﻿namespace Nodes.Echo;
 
-public class EchoNode : Node
+public class EchoNode : InitNode
 {
     [MessageHandler("echo")]
     public async void HandleEcho(dynamic msg)

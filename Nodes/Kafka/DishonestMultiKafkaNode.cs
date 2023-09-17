@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace Nodes.Kafka;
 
 // Partitions logs across nodes. Works great, but not the intended way to solve this challenge
-public class DishonestMultiKafkaNode : Node
+public class DishonestMultiKafkaNode : InitNode
 {
     private readonly ConcurrentDictionary<string, long> _commits = new();
     private readonly ConcurrentDictionary<string, List<long>> _logs = new();

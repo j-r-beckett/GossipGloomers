@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace Nodes.Broadcast;
 
-public class BroadcastNode : Node
+public class BroadcastNode : InitNode
 {
     private ImmutableHashSet<long> _messages = ImmutableHashSet<long>.Empty;
     

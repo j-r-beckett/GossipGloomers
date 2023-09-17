@@ -1,6 +1,6 @@
 namespace Nodes.Generate;
 
-public class GenerateIdNode : Node
+public class GenerateIdNode : InitNode
 {
     [MessageHandler("generate")]
     public void HandleGenerate(dynamic msg)

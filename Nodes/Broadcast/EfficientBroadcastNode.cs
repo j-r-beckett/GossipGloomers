@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace Nodes.Broadcast;
 
-public class EfficientBroadcastNode : Node
+public class EfficientBroadcastNode : InitNode
 {
     private ImmutableHashSet<long> _messages = ImmutableHashSet<long>.Empty;
     

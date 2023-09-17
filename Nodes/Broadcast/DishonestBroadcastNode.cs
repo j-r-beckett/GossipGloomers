@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 namespace Nodes.Broadcast;
 
 // Sends all messages to all other nodes after receiving a broadcast. Not the intended way to solve the challenge
-public class DishonestBroadcastNode : Node
+public class DishonestBroadcastNode : InitNode
 {
     private ImmutableHashSet<long> _messages = ImmutableHashSet<long>.Empty;
     
