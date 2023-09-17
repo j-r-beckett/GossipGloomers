@@ -45,13 +45,10 @@ public class EfficientBroadcastNode : Node
     public void HandleUpdateAck(dynamic msg)
     {
         var srcNodeId = (string)msg.Src;
-        ImmutableDictionary<long, long> oldValue;
-        ImmutableDictionary<long, long> newValue;
-        do
-        {
-            oldValue = _unackedUpdates[srcNodeId];
-            newValue = oldValue.Where(p => p.Key > (long)msg.Body.UpdateId).ToImmutableDictionary();
-        } while (!ImmutableInterlocked.TryUpdate(ref _unackedUpdates, srcNodeId, newValue, oldValue));
+        ImmutableDictionary<long, long> RemoveAckedUpdates(ImmutableDictionary<long, long> updates)
+            => updates.Where(p => p.Key > (long)msg.Body.UpdateId).ToImmutableDictionary();
+        while (!ImmutableInterlocked.TryUpdate(ref _unackedUpdates, srcNodeId,
+                   RemoveAckedUpdates(_unackedUpdates[srcNodeId]), _unackedUpdates[srcNodeId])) ;
     }
 
     [MessageHandler("broadcast")]
@@ -64,23 +61,15 @@ public class EfficientBroadcastNode : Node
             if (nodeId != NodeId)
             {
                 var msgId = (long)Next(ref _messageId);
-                
                 ImmutableInterlocked.TryAdd(ref _unackedUpdates, nodeId, ImmutableDictionary<long, long>.Empty);
-                ImmutableDictionary<long, long> oldValue;
-                ImmutableDictionary<long, long> newValue;
-                do
-                {
-                    oldValue = _unackedUpdates[nodeId];
-                    newValue = oldValue.Add(msgId, message);
-                } while (!ImmutableInterlocked.TryUpdate(ref _unackedUpdates, nodeId, newValue, oldValue));
-                
+                while (!ImmutableInterlocked.TryUpdate(ref _unackedUpdates, nodeId,
+                           _unackedUpdates[nodeId].Add(msgId, message), _unackedUpdates[nodeId])) ;
                 var updateMsg = new
                 {
                     Src = NodeId,
                     Dest = nodeId,
-                    Body = new { Type = "update", Update = newValue.Values, MsgId = msgId }
+                    Body = new { Type = "update", Update = _unackedUpdates[nodeId].Values, MsgId = msgId }
                 };
-                
                 // Console.Error.WriteLine($"sending update {JsonConvert.SerializeObject(updateMsg)}");
                 WriteMessage(updateMsg);
             }
