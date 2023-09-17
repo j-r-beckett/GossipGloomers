@@ -1,15 +1,13 @@
 using System.Collections.Concurrent;
-using System.Net.NetworkInformation;
 using System.Reflection;
-using Microsoft.CSharp.RuntimeBinder;
 using Newtonsoft.Json;
 
 namespace Nodes;
 
 public abstract class Node
 {
-    private static readonly TimeSpan _MainLoopDelay = TimeSpan.FromMilliseconds(10);
-    private static readonly TimeSpan _ResendDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan _MainLoopDelay = TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan _ResendDelay = TimeSpan.FromMilliseconds(1500);
 
     private readonly PriorityQueue<BackgroundJob, DateTime> _backgroundJobs = new();
 
@@ -62,6 +60,8 @@ public abstract class Node
         // Main loop
         while (true)
         {
+            var startTime = DateTime.Now;
+            
             // Process all lines in buffer
             while (lineBuffer.TryDequeue(out var line))
             {
@@ -86,21 +86,25 @@ public abstract class Node
             // Create background jobs for unprocessed requests
             while (_unprocessedRequests.TryDequeue(out var request))
             {
-                bool Job(int _)
+                bool Job(int n)
                 {
+                    if (n > 0)
+                        Console.Error.WriteLine($"sending {JsonConvert.SerializeObject(request.Item1)} {n}");
+                    
                     var (msg, future) = request;
-                    var hasReceivedResponse = future.TryGetResponse(out var _);
+                    var hasReceivedResponse = future.TryGetResponse(out _);
                     if (!hasReceivedResponse) WriteMessage(msg);
                     return !hasReceivedResponse;
                 }
-                
+
                 _backgroundJobs.Enqueue(new BackgroundJob(Job: Job, delay: _ResendDelay, NumInvocations: 0), DateTime.Now);
             }
             
-            // Run background jobs
-            while (_backgroundJobs.TryPeek(out var backgroundJob,  out var executionTime) && executionTime <= DateTime.Now)
+            // Run background jobs in main thread
+            while (_backgroundJobs.TryPeek(out var backgroundJob, out var executionTime) && executionTime <= DateTime.Now)
             {
                 _backgroundJobs.Dequeue();
+                // Console.Error.WriteLine($"executing job with time delta {(DateTime.Now - executionTime).TotalMilliseconds} ms");
                 if (backgroundJob.Job.Invoke(backgroundJob.NumInvocations))
                 {
                     _backgroundJobs.Enqueue(backgroundJob with { NumInvocations = backgroundJob.NumInvocations + 1},
@@ -109,7 +113,9 @@ public abstract class Node
             }
             
             // Sleep! zz
-            Thread.Sleep(_MainLoopDelay);
+            var nextRunTime = startTime + _MainLoopDelay;
+            TimeSpan Max(TimeSpan t1, TimeSpan t2) => new (Math.Max(t1.Ticks, t2.Ticks));
+            Thread.Sleep(Max(DateTime.Now - nextRunTime, TimeSpan.Zero));
         }
     }
 
