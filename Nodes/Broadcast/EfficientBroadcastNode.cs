@@ -15,7 +15,7 @@ public class EfficientBroadcastNode : Node
     private ImmutableDictionary<string, long> _unsentUpdateAcks 
         = ImmutableDictionary<string, long>.Empty;
 
-    [BackgroundProcess(1000)]
+    [BackgroundProcess(2000)]
     public void SendUpdateIds()
     {
         foreach (var (node, id) in _unsentUpdateAcks)
@@ -81,7 +81,7 @@ public class EfficientBroadcastNode : Node
                     Body = new { Type = "update", Update = newValue.Values, MsgId = msgId }
                 };
                 
-                Console.Error.WriteLine($"sending update {JsonConvert.SerializeObject(updateMsg)}");
+                // Console.Error.WriteLine($"sending update {JsonConvert.SerializeObject(updateMsg)}");
                 WriteMessage(updateMsg);
             }
         }
