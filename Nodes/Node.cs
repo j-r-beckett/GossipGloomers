@@ -88,9 +88,6 @@ public abstract class Node
             {
                 bool Job(int n)
                 {
-                    if (n > 0)
-                        Console.Error.WriteLine($"sending {JsonConvert.SerializeObject(request.Item1)} {n}");
-                    
                     var (msg, future) = request;
                     var hasReceivedResponse = future.TryGetResponse(out _);
                     if (!hasReceivedResponse) WriteMessage(msg);
