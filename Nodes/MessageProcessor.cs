@@ -11,7 +11,7 @@ public class MessageProcessor
 
     public bool TryProcessResponse(dynamic response)
     {
-        if (_responseFutures.Remove(UniqueIdFromResponse(response), out MutableResponseFuture future))
+        if (_responseFutures.TryRemove(UniqueIdFromResponse(response), out MutableResponseFuture future))
         {
             future.Response = response;
             return true;
