@@ -7,7 +7,7 @@ namespace Nodes;
 public abstract class Node
 {
     private static readonly TimeSpan _MainLoopDelay = TimeSpan.FromMilliseconds(50);
-    private static readonly TimeSpan _ResendDelay = TimeSpan.FromMilliseconds(1500);
+    private static readonly TimeSpan _ResendDelay = TimeSpan.FromMilliseconds(500);
 
     private readonly PriorityQueue<BackgroundJob, DateTime> _backgroundJobs = new();
 
