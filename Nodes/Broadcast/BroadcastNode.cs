@@ -23,7 +23,7 @@ public class BroadcastNode : InitNode
                     {
                         Src = NodeId,
                         Dest = nodeId,
-                        Body = new { Type = "broadcast", Message = message, MsgId = Next(ref _messageId) }
+                        Body = new { Type = "broadcast", Message = message, MsgId = NextMsgId() }
                     });
                 }
             }

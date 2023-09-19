@@ -24,7 +24,7 @@ public class EfficientBroadcastNode : InitNode
             {
                 Src = NodeId,
                 Dest = node,
-                Body = new { Type = "update_ack", UpdateId = id, MsgId = Next(ref _messageId) }
+                Body = new { Type = "update_ack", UpdateId = id, MsgId = NextMsgId() }
             });
         }
 
@@ -60,7 +60,7 @@ public class EfficientBroadcastNode : InitNode
         {
             if (nodeId != NodeId)
             {
-                var msgId = (long)Next(ref _messageId);
+                var msgId = NextMsgId();
                 ImmutableInterlocked.TryAdd(ref _unackedUpdates, nodeId, ImmutableDictionary<long, long>.Empty);
                 while (!ImmutableInterlocked.TryUpdate(ref _unackedUpdates, nodeId,
                            _unackedUpdates[nodeId].Add(msgId, message), _unackedUpdates[nodeId])) ;

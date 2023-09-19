@@ -30,10 +30,11 @@ public class CounterNode : InitNode
         {
             if (node != NodeId)
             {
-                _pendingExternalCounterUpdates.Add(Next(ref _messageId), node);
+                var msgId = NextMsgId();
+                _pendingExternalCounterUpdates.Add(msgId, node);
                 WriteMessage(new
                 {
-                    Src = NodeId, Dest = "seq-kv", Body = new { Type = "read", Key = node, MsgId = _messageId }
+                    Src = NodeId, Dest = "seq-kv", Body = new { Type = "read", Key = node, MsgId = msgId }
                 });
             }
         }
@@ -57,7 +58,7 @@ public class CounterNode : InitNode
         {
             Src = NodeId,
             Dest = "seq-kv",
-            Body = new { Type = "write", Key = NodeId, Value = _internalCounter, MsgId = Next(ref _messageId) }
+            Body = new { Type = "write", Key = NodeId, Value = _internalCounter, MsgId = NextMsgId() }
         });
     }
 }

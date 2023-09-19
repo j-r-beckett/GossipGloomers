@@ -52,7 +52,7 @@ public class DishonestMultiKafkaNode : InitNode
                 {
                     Src = NodeId,
                     Dest = Host(log),
-                    Body = new { Type = "send", Key = log, Msg = entry, MsgId = Next(ref _messageId) }
+                    Body = new { Type = "send", Key = log, Msg = entry, MsgId = NextMsgId() }
                 })
                 .Wait();
             offset = response.Body.Offset;
@@ -93,7 +93,7 @@ public class DishonestMultiKafkaNode : InitNode
                 {
                     Type = "poll",
                     Offsets = new Dictionary<string, long>(offsets.Where(e => Host(e.Key) == host)),
-                    MsgId = Next(ref _messageId)
+                    MsgId = NextMsgId()
                 }
             }))
             .ToArray();
@@ -134,7 +134,7 @@ public class DishonestMultiKafkaNode : InitNode
                     {
                         Src = NodeId,
                         Dest = nodeId,
-                        Body = new { Type = "commit_offsets", Offsets = offsets, MsgId = Next(ref _messageId) }
+                        Body = new { Type = "commit_offsets", Offsets = offsets, MsgId = NextMsgId() }
                     });
                 }
             }

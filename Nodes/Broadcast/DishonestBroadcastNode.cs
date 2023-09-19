@@ -27,7 +27,7 @@ public class DishonestBroadcastNode : InitNode
                 {
                     Src = NodeId,
                     Dest = nodeId,
-                    Body = new { Type = "update", Update = _messages, MsgId = Next(ref _messageId) }
+                    Body = new { Type = "update", Update = _messages, MsgId = NextMsgId() }
                 });
             }
         }

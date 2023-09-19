@@ -130,7 +130,22 @@ public abstract class Node
         => WriteMessage(new { Src = NodeId, Dest = request.Src, Body = responseBody });
     
     public void WriteMessage(dynamic msg) => Console.WriteLine(JsonConvert.SerializeObject(msg));
-    
-    protected static int Next(ref int messageId) => ++messageId;
-    protected int _messageId = -1;
+
+    private readonly MsgIdGenerator _msgIdGenerator = new();
+
+    protected long NextMsgId() => _msgIdGenerator.NextId();
+
+    private class MsgIdGenerator
+    {
+        private readonly object _lock = new();
+        private long _id;
+
+        public long NextId()
+        {
+            lock (_lock)
+            {
+                return _id++;
+            }
+        }
+    }
 }
