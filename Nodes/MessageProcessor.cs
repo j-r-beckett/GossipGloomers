@@ -1,8 +1,10 @@
+using System.Collections.Concurrent;
+
 namespace Nodes;
 
 public class MessageProcessor
 {
-    private readonly Dictionary<string, MutableResponseFuture> _responseFutures = new();
+    private readonly ConcurrentDictionary<string, MutableResponseFuture> _responseFutures = new();
     
     public ResponseFuture ProcessRequest(dynamic request)
         => _responseFutures[UniqueIdFromRequest(request)] = new MutableResponseFuture();
