@@ -1,3 +1,5 @@
+using static Nodes.IO;
+
 namespace Nodes;
 
 public class InitNode : Node

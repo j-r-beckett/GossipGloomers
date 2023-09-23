@@ -1,3 +1,5 @@
+using static Nodes.IO;
+
 namespace Nodes.Kafka;
 
 public class SingleKafkaNode : InitNode

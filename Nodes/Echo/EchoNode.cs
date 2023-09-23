@@ -1,4 +1,6 @@
-﻿namespace Nodes.Echo;
+﻿using static Nodes.IO;
+
+namespace Nodes.Echo;
 
 public class EchoNode : InitNode
 {

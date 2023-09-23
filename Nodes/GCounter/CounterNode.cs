@@ -1,3 +1,5 @@
+using static Nodes.IO;
+
 namespace Nodes.GCounter;
 
 public class CounterNode : InitNode

@@ -1,48 +1,44 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Newtonsoft.Json;
+using static Nodes.IO;
 
 namespace Nodes;
 
 public abstract class Node
 {
-    private static readonly TimeSpan _MainLoopDelay = TimeSpan.FromMilliseconds(50);
-    private static readonly TimeSpan _ResendDelay = TimeSpan.FromMilliseconds(500);
-
-    private readonly PriorityQueue<BackgroundJob, DateTime> _backgroundJobs = new();
+    private static readonly TimeSpan MainLoopDelay = TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan ResendDelay = TimeSpan.FromMilliseconds(500);
 
     private readonly MessageProcessor _messageProcessor = new();
+    private readonly PriorityQueue<BackgroundJob, DateTime> _backgroundJobs = new();
     private readonly ConcurrentQueue<(dynamic, MessageProcessor.ResponseFuture)> _unprocessedRequests = new();
     
-    public string? NodeId;
-    public string[] NodeIds;
-
-    private record BackgroundJob(Func<int, bool> Job, TimeSpan delay, int NumInvocations);
-
+    private long _msgId;
+    
     public Node()
     {
-        var backgroundTasks = GetType()
+        var backgroundJobs = GetType()
             .GetMethods()
             .Select(m => (method: m, attr: m.GetCustomAttribute<BackgroundProcessAttribute>()))
             .Where(t => t.attr != null)
-            .Select(t => (t.method, delay: TimeSpan.FromMilliseconds(t.attr.IntervalMillis)));
-
-        foreach (var (method, delay) in backgroundTasks)
-        {
-            var backgroundJob = new BackgroundJob(
+            .Select(t => new BackgroundJob(
                 Job: _ =>
                 {
-                    if (NodeId != null && NodeIds != null)  // only run background methods after the node has finished initializing
+                    if (NodeId != null && NodeIds != null)  // only execute background methods after the node has finished initializing
                     {
-                        method.Invoke(this, Array.Empty<object>());
+                        t.method.Invoke(this, Array.Empty<object>());
                     }
-                    return true;
+                    return true;  // background jobs are always renewed
                 }, 
-                delay: delay,
-                NumInvocations: 0);
-            _backgroundJobs.Enqueue(backgroundJob, DateTime.Now);
-        }
+                delay: TimeSpan.FromMilliseconds(t.attr.IntervalMillis),
+                NumInvocations: 0));
+        
+        _backgroundJobs.EnqueueRange(backgroundJobs.Select(job => (job, DateTime.Now)));
     }
+    
+    protected string? NodeId { get; set; }
+    protected string[]? NodeIds { get; set; }
 
     public void Run()
     {
@@ -62,7 +58,7 @@ public abstract class Node
         {
             var startTime = DateTime.Now;
             
-            // Process all lines in buffer
+            // Process all lines in stdin buffer
             while (lineBuffer.TryDequeue(out var line))
             {
                 var msg = MessageParser.ParseMessage(line);
@@ -86,15 +82,18 @@ public abstract class Node
             // Create background jobs for unprocessed requests
             while (_unprocessedRequests.TryDequeue(out var request))
             {
-                bool Job(int n)
-                {
-                    var (msg, future) = request;
-                    var hasReceivedResponse = future.TryGetResponse(out _);
-                    if (!hasReceivedResponse) WriteMessage(msg);
-                    return !hasReceivedResponse;
-                }
-
-                _backgroundJobs.Enqueue(new BackgroundJob(Job: Job, delay: _ResendDelay, NumInvocations: 0), DateTime.Now);
+                _backgroundJobs.Enqueue(
+                    new BackgroundJob(
+                        Job: n => 
+                        {
+                            var (msg, future) = request;
+                            var hasReceivedResponse = future.TryGetResponse(out _);
+                            if (!hasReceivedResponse) WriteMessage(msg);
+                            return !hasReceivedResponse;
+                        }, 
+                        delay: ResendDelay, 
+                        NumInvocations: 0), 
+                    DateTime.Now);
             }
             
             // Run background jobs in main thread
@@ -110,7 +109,7 @@ public abstract class Node
             }
             
             // Sleep! zz
-            var nextRunTime = startTime + _MainLoopDelay;
+            var nextRunTime = startTime + MainLoopDelay;
             TimeSpan Max(TimeSpan t1, TimeSpan t2) => new (Math.Max(t1.Ticks, t2.Ticks));
             Thread.Sleep(Max(DateTime.Now - nextRunTime, TimeSpan.Zero));
         }
@@ -123,26 +122,7 @@ public abstract class Node
         return future;
     }
 
-    protected void WriteResponse(dynamic request, dynamic responseBody) 
-        => WriteMessage(new { Src = NodeId, Dest = request.Src, Body = responseBody });
+    protected long NextMsgId() => _msgId++;
     
-    public void WriteMessage(dynamic msg) => Console.WriteLine(JsonConvert.SerializeObject(msg));
-
-    private readonly MsgIdGenerator _msgIdGenerator = new();
-
-    protected long NextMsgId() => _msgIdGenerator.NextId();
-
-    private class MsgIdGenerator
-    {
-        private readonly object _lock = new();
-        private long _id;
-
-        public long NextId()
-        {
-            lock (_lock)
-            {
-                return _id++;
-            }
-        }
-    }
+    private record BackgroundJob(Func<int, bool> Job, TimeSpan delay, int NumInvocations);
 }
