@@ -5,4 +5,4 @@ using Nodes.Echo;
 using Nodes.GCounter;
 using Nodes.Kafka;
 
-new DishonestMultiKafkaNode().Run();
+new EfficientBroadcastNode().Run();

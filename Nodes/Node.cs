@@ -93,7 +93,7 @@ public abstract class Node
                         }, 
                         delay: ResendDelay, 
                         NumInvocations: 0), 
-                    DateTime.Now);
+                    DateTime.Now + ResendDelay);
             }
             
             // Run background jobs in main thread
@@ -111,12 +111,15 @@ public abstract class Node
             // Sleep! zz
             var nextRunTime = startTime + MainLoopDelay;
             TimeSpan Max(TimeSpan t1, TimeSpan t2) => new (Math.Max(t1.Ticks, t2.Ticks));
-            Thread.Sleep(Max(DateTime.Now - nextRunTime, TimeSpan.Zero));
+            // Console.Error.WriteLine($"elapsed time: {(DateTime.Now - startTime).TotalMilliseconds} ms, " +
+            //                         $"sleeping for: {Max(nextRunTime - DateTime.Now, TimeSpan.Zero).TotalMilliseconds} ms");
+            Thread.Sleep(Max(nextRunTime - DateTime.Now, TimeSpan.Zero));
         }
     }
 
     public MessageProcessor.ResponseFuture SendRequest(dynamic msg)
     {
+        WriteMessage(msg);
         var future = _messageProcessor.ProcessRequest(msg);
         _unprocessedRequests.Enqueue((msg, future));
         return future;

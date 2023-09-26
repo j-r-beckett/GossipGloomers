@@ -29,7 +29,7 @@ public class BroadcastNode : InitNode
                 }
             }
         }
-
+        
         WriteResponse(msg, new { Type = "broadcast_ok", InReplyTo = msg.Body.MsgId });
     }
 
