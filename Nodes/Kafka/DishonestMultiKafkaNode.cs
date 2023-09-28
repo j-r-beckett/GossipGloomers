@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using static Nodes.IO;
 
 namespace Nodes.Kafka;
@@ -42,10 +43,17 @@ public class DishonestMultiKafkaNode : InitNode
         
         if (Host(log) == NodeId)
         {
-            _logs.TryAdd(log, new List<long>());
-            var logEntries = _logs[log];
-            logEntries.Add(entry);
-            offset = logEntries.Count - 1;
+            offset = -1;
+            _logs.AddOrUpdate(log, _ =>
+            {
+                offset = 0;
+                return new List<long> { entry };
+            }, (_, logEntries) =>
+            {
+                offset = logEntries.Count;
+                logEntries.Add(entry);
+                return logEntries;
+            });
         }
         else
         {
