@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using static Nodes.IO;
 
 namespace Nodes.Kafka;
@@ -5,16 +7,21 @@ namespace Nodes.Kafka;
 public class SingleKafkaNode : InitNode
 {
     private readonly Dictionary<string, int> _commits = new();
-    private readonly Dictionary<string, List<int>> _logs = new();
+    private readonly ConcurrentDictionary<string, List<int>> _logs = new();
 
     [MessageHandler("send")]
     public void HandleSend(dynamic msg)
     {
         var key = (string)msg.Body.Key;
-        _logs.TryAdd(key, new List<int>());
-        var log = _logs[key];
-        log.Add((int)msg.Body.Msg);
-        WriteResponse(msg, new { Type = "send_ok", Offset = log.Count - 1, InReplyTo = msg.Body.MsgId });
+        var message = (int)msg.Body.Msg;
+        var offset = 0;
+        _logs.AddOrUpdate(key, new List<int> { message }, (_, messages) =>
+        {
+            offset = messages.Count;
+            messages.Add(message);
+            return messages;
+        });
+        WriteResponse(msg, new { Type = "send_ok", Offset = offset, InReplyTo = msg.Body.MsgId });
     }
 
     [MessageHandler("poll")]
