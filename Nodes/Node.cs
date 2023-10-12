@@ -13,7 +13,8 @@ public abstract class Node
     private readonly MessageProcessor _messageProcessor = new();
     private readonly PriorityQueue<BackgroundJob, DateTime> _backgroundJobs = new();
     private readonly ConcurrentQueue<(dynamic, MessageProcessor.ResponseFuture)> _unprocessedRequests = new();
-    
+
+    private readonly object _msgIdLock = new ();
     private long _msgId;
     
     public Node()
@@ -87,6 +88,7 @@ public abstract class Node
                         Job: n => 
                         {
                             var (msg, future) = request;
+                            if (n > 0) Console.Error.WriteLine($"resending {JsonConvert.SerializeObject(msg)}");
                             var hasReceivedResponse = future.TryGetResponse(out _);
                             if (!hasReceivedResponse) WriteMessage(msg);
                             return !hasReceivedResponse;
@@ -125,7 +127,13 @@ public abstract class Node
         return future;
     }
 
-    protected long NextMsgId() => _msgId++;
+    protected long NextMsgId()
+    {
+        lock (_msgIdLock)
+        {
+            return _msgId++;
+        }
+    }
     
     private record BackgroundJob(Func<int, bool> Job, TimeSpan delay, int NumInvocations);
 }

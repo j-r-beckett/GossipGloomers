@@ -1,85 +1,69 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Newtonsoft.Json;
 using static Nodes.IO;
 
 namespace Nodes.Kafka;
 
-public class MultiKafkaNode : Node
+public class MultiKafkaNode : InitNode
 {
     private readonly ConcurrentDictionary<string, long> _commits = new();
     private readonly ConcurrentDictionary<string, List<long>> _logs = new();
     
-    private string LogCreationLockName => "log-creation-lock";  // lin-kv[LogCreationLockName] = "locked" / "unlocked" 
-    private string LogOffsetCounterName(string log) => $"{log}-offset-counter";
+    private static string LogOffsetCounterName(string log) => $"{log}-offset-counter";
     private static string LogEntryName(string log, long offset) => $"{log}-{offset}";
     private static bool IsMessageFromClient(dynamic msg) => msg.Src.ToString().StartsWith("c");
+    private readonly ConcurrentDictionary<string, long> _pollCache = new ();
 
 
     [MessageHandler("send")]
     public void HandleSend(dynamic msg)
     {
-        // Console.Error.WriteLine($"received send {JsonConvert.SerializeObject(msg)}");
-        
         var log = (string)msg.Body.Key;
-        var getLogOffsetCounterRequest = new
-        {
-            Src = NodeId,
-            Dest = "lin-kv",
-            Body = new { Type = "read", Key = LogOffsetCounterName(log), MsgId = NextMsgId() }
-        };
-        var logOffsetCounter = SendRequest(getLogOffsetCounterRequest).Wait();
-        long offset;
 
-        if (logOffsetCounter.Body.Type == "error")
+        dynamic incrementResponse;
+        int offset;
+        do
         {
-            AcquireLock(LogCreationLockName);
-            logOffsetCounter = SendRequest(getLogOffsetCounterRequest).Wait();  // check if another node initialized log
-            if (logOffsetCounter.Body.Type == "error")
-            {
-                WriteMessage(new
+            // read offset counter
+            var offsetCounterResponse = SendRequest(new
                 {
                     Src = NodeId,
                     Dest = "lin-kv",
-                    Body = new { Type = "write", Key = LogOffsetCounterName(log), Value = 0, MsgId = NextMsgId() }
-                });
-                logOffsetCounter = SendRequest(getLogOffsetCounterRequest).Wait();
-            }
-            ReleaseLock(LogCreationLockName);
-        }
+                    Body = new { Type = "read", Key = LogOffsetCounterName(log), MsgId = NextMsgId() }
+                })
+                .Wait();
+            offset = offsetCounterResponse.Body.Type == "error" ? 0 : (int)offsetCounterResponse.Body.Value;
+            
+            // increment offset counter
+            incrementResponse = SendRequest(new
+                {
+                    Src = NodeId,
+                    Dest = "lin-kv",
+                    Body = new
+                    {
+                        Type = "cas",
+                        Key = LogOffsetCounterName(log),
+                        From = offset,
+                        To = offset + 1,
+                        Create_If_Not_Exists = true,
+                        MsgId = NextMsgId()
+                    }
+                })
+                .Wait();
+        } while (incrementResponse.Body.Type == "error");
         
-        // increment it
-        dynamic IncrementCounterRequest(long offset)
-            => new
+        // write message to storage
+        SendRequest(new
             {
                 Src = NodeId,
                 Dest = "lin-kv",
                 Body = new
                 {
-                    Type = "cas",
-                    Key = LogOffsetCounterName(log),
-                    From = offset,
-                    To = offset + 1,
-                    MsgId = NextMsgId()
+                    Type = "write", Key = LogEntryName(log, offset), Value = msg.Body.Msg, MsgId = NextMsgId()
                 }
-            };
-
-        var incrementCounterResponse = SendRequest(IncrementCounterRequest(logOffsetCounter.Body.Value)).Wait();
-        // (re-read log offset and retry increment) until increment succeeds
-        while (incrementCounterResponse.Body.Type == "error") 
-        {
-            logOffsetCounter = SendRequest(getLogOffsetCounterRequest).Wait();
-            incrementCounterResponse = SendRequest(IncrementCounterRequest(logOffsetCounter.Body.Value)).Wait();
-        }
-
-        offset = logOffsetCounter.Body.Value;
-        
-        // write message to storage
-        WriteMessage(new
-        {
-            Src = NodeId,
-            Dest = "lin-kv",
-            Body = new { Type = "write", Key = LogEntryName(log, offset), Value = msg.Body.Msg, MsgId = NextMsgId() }
-        });
+            })
+            .Wait();
         
         WriteResponse(msg, new { Type = "send_ok", Offset = offset, InReplyTo = msg.Body.MsgId });
     }
@@ -88,25 +72,44 @@ public class MultiKafkaNode : Node
     public void HandlePoll(dynamic msg)
     {
         Dictionary<string, long> offsets = msg.Body.Offsets.ToObject<Dictionary<string, long>>();  // { log -> offset }
+        // var messageFutures = offsets.Keys.ToDictionary(log => log, _ => new List<MessageProcessor.ResponseFuture[]>());  // { log -> [(offset, ResponseFuture)] }
         var messages = offsets.Keys.ToDictionary(log => log, _ => new List<long[]>());  // { log -> [(offset, msg)] }
-
+        
         foreach (var (log, startingOffset) in offsets)
         {
-            for (var currentOffset = startingOffset;; currentOffset++)
+            var offsetCounterResponse = SendRequest(new
+                {
+                    Src = NodeId,
+                    Dest = "lin-kv",
+                    Body = new { Type = "read", Key = LogOffsetCounterName(log), MsgId = NextMsgId() }
+                })
+                .Wait();
+            var endOffset = offsetCounterResponse.Body.Type == "error" ? 0 : (int)offsetCounterResponse.Body.Value;
+            for (var currentOffset = startingOffset; currentOffset < endOffset; currentOffset++)
             {
-                var readMsgResponse = SendRequest(new
+                var key = LogEntryName(log, currentOffset);
+                if (!_pollCache.ContainsKey(key))
+                {
+                    dynamic readMsgResponse;
+                    do
                     {
-                        Src = NodeId,
-                        Dest = "lin-kv",
-                        Body = new { Type = "read", Key = LogEntryName(log, currentOffset), MsgId = NextMsgId() }
-                    })
-                    .Wait();
-                if (readMsgResponse.Body.Type == "error") break;  // stop when we reach the end of the log
-                messages[log].Add(new long[] { currentOffset, readMsgResponse.Body.Value });
-            }; 
+                        readMsgResponse = SendRequest(new
+                            {
+                                Src = NodeId,
+                                Dest = "lin-kv",
+                                Body = new
+                                {
+                                    Type = "read", Key = LogEntryName(log, currentOffset), MsgId = NextMsgId()
+                                }
+                            })
+                            .Wait();
+                    } while (readMsgResponse.Body.Type == "error");
+                    // _pollCache[key] = readMsgResponse.Body.Value;
+                }
+                messages[log].Add(new [] { currentOffset, _pollCache[key] });
+            } 
         }
         
-        // Console.Error.WriteLine($"returning poll {JsonConvert.SerializeObject(messages)} for request {JsonConvert.SerializeObject(msg)}");
         WriteResponse(msg, new { Type = "poll_ok", Msgs = messages, InReplyTo = msg.Body.MsgId });
     }
 
@@ -138,56 +141,6 @@ public class MultiKafkaNode : Node
                 }
             }
         }
-    }
-    
-    [MessageHandler("init")]
-    public void HandleInit(dynamic msg)
-    {
-        NodeId = msg.Body.NodeId;
-        if (NodeId == "n0")
-        {
-            WriteMessage(new
-            {
-                Src = NodeId,
-                Dest = "lin-kv",
-                Body = new { Type = "write", Key = LogCreationLockName, Value = "unlocked", MsgId = NextMsgId() }
-            });
-        }
-        NodeIds = msg.Body.NodeIds.ToObject<string[]>();
-        WriteResponse(msg, new { Type = "init_ok", InReplyTo = msg.Body.MsgId });
-    }
-
-    private void AcquireLock(string lockName)
-    {
-        dynamic response;
-        do
-        {
-            response = SendRequest(new
-                {
-                    Src = NodeId,
-                    Dest = "lin-kv",
-                    Body = new
-                    {
-                        Type = "cas",
-                        Key = lockName,
-                        From = "unlocked",
-                        To = "locked",
-                        MsgId = NextMsgId()
-                    }
-                })
-                .Wait();
-        } while (response.Body.Type == "error");  // attempt to acquire lock until successful
-    }
-
-    private void ReleaseLock(string lockName)
-    {
-        SendRequest(new
-            {
-                Src = NodeId,
-                Dest = "lin-kv",
-                Body = new { Type = "write", Key = lockName, Value = "unlocked", MsgId = NextMsgId() }
-            })
-            .Wait();
     }
 
     [MessageHandler("list_committed_offsets")]
