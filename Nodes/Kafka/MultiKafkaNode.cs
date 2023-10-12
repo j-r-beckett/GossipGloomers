@@ -72,7 +72,6 @@ public class MultiKafkaNode : InitNode
     public void HandlePoll(dynamic msg)
     {
         Dictionary<string, long> offsets = msg.Body.Offsets.ToObject<Dictionary<string, long>>();  // { log -> offset }
-        // var messageFutures = offsets.Keys.ToDictionary(log => log, _ => new List<MessageProcessor.ResponseFuture[]>());  // { log -> [(offset, ResponseFuture)] }
         var messages = offsets.Keys.ToDictionary(log => log, _ => new List<long[]>());  // { log -> [(offset, msg)] }
         
         foreach (var (log, startingOffset) in offsets)
@@ -104,7 +103,7 @@ public class MultiKafkaNode : InitNode
                             })
                             .Wait();
                     } while (readMsgResponse.Body.Type == "error");
-                    // _pollCache[key] = readMsgResponse.Body.Value;
+                    _pollCache[key] = readMsgResponse.Body.Value;
                 }
                 messages[log].Add(new [] { currentOffset, _pollCache[key] });
             } 
