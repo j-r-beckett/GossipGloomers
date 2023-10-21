@@ -4,5 +4,6 @@ using Nodes.Broadcast;
 using Nodes.Echo;
 using Nodes.GCounter;
 using Nodes.Kafka;
+using Nodes.Transations;
 
-new MultiKafkaNode().Run();
+new SingleTransactionNode().Run();

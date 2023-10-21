@@ -24,3 +24,6 @@ singleKafka:
 	
 multiKafka:
 	./maelstrom test -w kafka --bin build/bin/Debug/net7.0/Nodes.exe --node-count 2 --concurrency 2n --time-limit 20 --rate 1000 --log-stderr
+	
+singleTransaction:
+	./maelstrom test -w txn-rw-register --bin build/bin/Debug/net7.0/Nodes.exe --node-count 1 --time-limit 20 --rate 1000 --concurrency 2n --consistency-models read-uncommitted --availability total --log-stderr
