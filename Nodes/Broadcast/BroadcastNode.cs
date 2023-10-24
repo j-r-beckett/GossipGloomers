@@ -7,7 +7,6 @@ public class BroadcastNode : InitNode
 {
     private ImmutableHashSet<long> _messages = ImmutableHashSet<long>.Empty;
     
-    private static bool IsFromClient(dynamic msg) => msg.Src.ToString().ToLower().StartsWith("c");
 
     [MessageHandler("broadcast")]
     public void HandleBroadcast(dynamic msg)
