@@ -1,4 +1,4 @@
-namespace Nodes.Transations;
+namespace Nodes.Transactions;
 
 public class Operation
 {

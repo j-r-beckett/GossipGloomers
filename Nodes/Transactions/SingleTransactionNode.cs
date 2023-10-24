@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using static Nodes.IO;
 
-namespace Nodes.Transations;
+namespace Nodes.Transactions;
 
 public class SingleTransactionNode : InitNode
 {
